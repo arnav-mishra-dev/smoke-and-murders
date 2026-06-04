@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "snm-backend", "snm-backend\snm-backend.csproj", "{D7F23FE6-CB82-49CD-88E8-9BE60216D0CF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "snm.api", "snm.api\snm.api.csproj", "{D7F23FE6-CB82-49CD-88E8-9BE60216D0CF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

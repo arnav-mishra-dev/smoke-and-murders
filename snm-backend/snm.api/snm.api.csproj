@@ -4,7 +4,7 @@
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
-        <RootNamespace>snm_backend</RootNamespace>
+        <RootNamespace>snm.api</RootNamespace>
     </PropertyGroup>
 
 </Project>
