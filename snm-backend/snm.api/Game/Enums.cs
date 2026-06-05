@@ -1,4 +1,4 @@
-﻿namespace snm.api.Cards;
+﻿namespace snm.api.Game;
 
 public enum CardSuit
 {
@@ -23,4 +23,22 @@ public enum CardValue
     Jack = 11,
     Queen = 12,
     King = 13,
+}
+
+public enum Stage
+{
+    Initial = 0,
+    Flop = 1,
+    Turn = 2,
+    River = 3,
+}
+
+public enum Role
+{
+    None = 0,
+    Doctor = 1,
+    Detective = 2,
+    Mayor = 3,
+    Jailer = 4,
+    Vigilante = 5
 }
