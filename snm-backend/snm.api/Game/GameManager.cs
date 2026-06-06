@@ -3,10 +3,10 @@
 public class GameManager
 {
     private readonly Deck _deck;
-    private readonly PlayerDto[] _players;
+    private readonly List<CardDto> _communityCards;
+    private readonly Dictionary<int, PlayerDto> _players;
     private readonly int _playerCount;
     private Stage _currentStage;
-    private List<CardDto> _communityCards;
 
     // Initialize Game
     public GameManager(in List<string> playerNames, int mafiaCount)
@@ -15,7 +15,7 @@ public class GameManager
         _playerCount = playerNames.Count;
         _deck = new Deck();
         _communityCards = new List<CardDto>();
-        _players = new PlayerDto[_playerCount];
+        _players = new Dictionary<int, PlayerDto>(_playerCount);
 
         int[] mafiaIndices = new int[mafiaCount];
         
@@ -30,51 +30,100 @@ public class GameManager
         {
             CardDto[] hand = hands[playerIndex];
             if (mafiaIndices.Contains(playerIndex))
-                _players[playerIndex] = new PlayerDto(playerNames[playerIndex], Role.None, true, hand, true);
+                _players[playerIndex] = new PlayerDto
+                {
+                    Name = _players[playerIndex].Name,
+                    Role = GetRoleFromHand(hand),
+                    IsMafia = true,
+                    Hand =  hand,
+                    Living = true,
+                    Jailed = false
+                };
             else
-                _players[playerIndex] = new PlayerDto(playerNames[playerIndex], Role.None, false, hand, true);
+                _players[playerIndex] = new PlayerDto
+                {
+                    Name = _players[playerIndex].Name,
+                    Role = GetRoleFromHand(hand),
+                    IsMafia = false,
+                    Hand =  hand,
+                    Living = true,
+                    Jailed = false
+                };
         }
     }
     
     // Gets all player data
-    public PlayerDto[] GetPlayers => _players;
+    public Dictionary<int, PlayerDto> GetPlayers => _players;
 
-    // Progress to the next level and handle current level
-    // Returns updated game information
-    public PlayerUpdateDto[] ProgressNextLevel(Dictionary<Role, List<int>> targets)
+    public void DealNightCards()
     {
-        PlayerUpdateDto[] updates = [];
         switch (_currentStage)
         {
-            case Stage.Initial:
-                break;
-            
             case Stage.Flop:
                 for (int i = 0; i < 3; i++)
                     _communityCards.Add(_deck.DrawRandomCard());
                 break;
             
             case Stage.Turn:
+                _communityCards.Add(_deck.DrawRandomCard());
                 break;
             
             case Stage.River:
+                _communityCards.Add(_deck.DrawRandomCard());
                 break;
+            
+            case Stage.Showdown: break;
         }
-
-        if (_currentStage != Stage.River)
+        
+        foreach (int pid in _players.Keys)
+            _players[pid].Role = GetRoleFromHand(_players[pid].Hand);
+        
+        if (_currentStage != Stage.Showdown)
             _currentStage++;
+    }
+
+    // Progress to the next level and handle current level
+    // Returns updated game information
+    public Dictionary<int, PlayerUpdateDto> UpdatePlayerActions(List<int> mafiaTargets, Dictionary<Role, List<int>> civTargets)
+    {
+        Dictionary<int, PlayerUpdateDto> updates = new Dictionary<int, PlayerUpdateDto>();
+
+        foreach (int target in mafiaTargets)
+        {
+            _players[target].Living = false;
+            updates[target] =
+                new PlayerUpdateDto(_players[target].Role, _players[target].Living, _players[target].Jailed);
+        }
+                
+        foreach (int pid in civTargets[Role.Vigilante])
+        {
+            _players[pid].Living = false;
+            updates[pid] = new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed);
+        }
+        
+        foreach (int pid in civTargets[Role.Jailer])
+        {
+            _players[pid].Jailed = true;
+            updates[pid] = new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed);
+        }
+        
+        foreach (int pid in civTargets[Role.Doctor])
+        {
+            _players[pid].Living = true;
+            updates[pid] = new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed);
+        }
         
         return updates;
     }
 
     // Returns player role based on 2 card hand passed to it and community cards member
-    private Role GetRoleFromHand(CardDto[] player)
+    private Role GetRoleFromHand(CardDto[] playerCards)
     {
         int cardCount = 2 + _communityCards.Count;
         List<CardValue> values = new List<CardValue>();
         List<CardSuit> suits  = new List<CardSuit>();
         
-        foreach (CardDto card in player)
+        foreach (CardDto card in playerCards)
         {
             values.Add(card.Value);
             suits.Add(card.Suit);
@@ -125,11 +174,11 @@ public class GameManager
                     {
                         if ((int)val + i > 13) break;
                         CardValue nextVal = (CardValue)((int)val + i);
-                        if (nextVal == CardValue.King && sortedVals.Contains(CardValue.Ace)) count++;
+                        if (nextVal is CardValue.King && sortedVals.Contains(CardValue.Ace)) count++;
                         if (sortedVals.Contains(nextVal)) count++;
                     }
 
-                    if (count == 5) return true;
+                    if (count > 4) return true;
                 }
 
                 return false;

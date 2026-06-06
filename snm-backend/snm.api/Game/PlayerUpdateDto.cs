@@ -3,5 +3,6 @@
 public record PlayerUpdateDto
 (
     Role Role,
-    bool Living
+    bool Living,
+    bool Jailed
 );

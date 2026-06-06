@@ -31,6 +31,7 @@ public enum Stage
     Flop = 1,
     Turn = 2,
     River = 3,
+    Showdown = 4
 }
 
 public enum Role
