@@ -1,11 +1,11 @@
 ﻿namespace snm.api.Game;
 
-public record PlayerDto
+public record Player
 {
     public required string Name { get; init; }
     public required Role Role { get; set; }
-    public required bool IsMafia { get; init; }
+    public bool IsMafia { get; set; }
     public required CardDto[] Hand { get; init; }
-    public required bool Living { get; set; } 
-    public required bool Jailed { get; set; }
+    public bool Jailed { get; set; }
+    public bool Living { get; set; } 
 }
