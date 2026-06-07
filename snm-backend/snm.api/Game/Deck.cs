@@ -15,34 +15,11 @@ public class Deck
 
     public CardDto DrawRandomCard()
     {
-        Random rand = new();
-        
-        int position = rand.Next(0, _cards.Count);
+        int position = UniversalRandom.Rand.Next(0, _cards.Count);
         CardDto card = _cards[position];
         
         _cards.RemoveAt(position);
         
         return card;
-    }
-
-    // Collects card pairs in a 2D array and removes them from the deck
-    // Returns the pairs
-    public CardDto[][] DealCards(in int playerCount)
-    {
-        Random rand = new Random();
-        CardDto[][] hands = new CardDto[playerCount][];
-        
-        for (int end = 0; end < playerCount; end++)
-        {
-            hands[end] = new CardDto[2];
-            for (int pairPos = 0; pairPos < 2; pairPos++)
-            {
-                int position = rand.Next(0, _cards.Count);
-                hands[end][pairPos] = _cards[position];
-                _cards.RemoveAt(position);
-            }
-        }
-
-        return hands;
     }
 }

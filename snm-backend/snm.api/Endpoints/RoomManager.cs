@@ -1,13 +1,36 @@
-﻿namespace snm.api.Endpoints;
+﻿using System.Collections.Concurrent;
+using snm.api.Game;
 
-public sealed class RoomManagerService : BackgroundService
+namespace snm.api.Endpoints;
+
+public class RoomManager
 {
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    private readonly ConcurrentDictionary<string, GameManager> _rooms = new();
+
+    public string GetOwnerId(string roomId)
     {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            Thread.Sleep(1000);
-        }
-        return Task.CompletedTask;
+        return _rooms[roomId].OwnerId;
     }
+
+    public void AddPlayer(string roomId, string uid, string username) =>
+        _rooms[roomId].AddPlayer(uid, username);
+    
+    public Dictionary<string, string> GetPlayers(string roomId) =>
+        _rooms[roomId].GetPlayers();
+    
+    public bool RoomExists(string room) =>
+        _rooms.ContainsKey(room);
+
+    public bool AddRoom(string roomId, string ownerId, string username)
+    {
+        if (_rooms.TryAdd(roomId, new GameManager(ownerId)))
+        {
+            _rooms[roomId].AddPlayer(ownerId, username);
+            return true;
+        }
+        return false;
+    }
+    
+    public void CloseRoom(string roomId) =>
+        _rooms.TryRemove(roomId, out _);
 }

@@ -1,6 +1,6 @@
 ﻿namespace snm.api;
 
-public class UniversalRandom
+public static class UniversalRandom
 {
-    
+    public static readonly Random Rand = new();
 }

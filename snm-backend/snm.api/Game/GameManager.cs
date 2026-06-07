@@ -1,59 +1,62 @@
 ﻿namespace snm.api.Game;
 
-public class GameManager
+public class GameManager(string owner)
 {
-    private readonly Deck _deck;
-    private readonly List<CardDto> _communityCards;
-    private readonly Dictionary<int, PlayerDto> _players;
-    private readonly int _playerCount;
-    private Stage _currentStage;
+    public string OwnerId { get; } = owner;
+    
+    private readonly Deck _deck = new();
+    private readonly List<CardDto> _communityCards = new();
+    private readonly Dictionary<string, Player> _players = new();
+    private Stage _currentStage = Stage.Initial;
 
-    // Initialize Game
-    public GameManager(in List<string> playerNames, int mafiaCount)
+    // Called after adding all players
+    public void InitializeGame(int mafiaCount)
     {
-        _currentStage = Stage.Initial;
-        _playerCount = playerNames.Count;
-        _deck = new Deck();
-        _communityCards = new List<CardDto>();
-        _players = new Dictionary<int, PlayerDto>(_playerCount);
+        int playerCount = _players.Count;
+        if (mafiaCount > playerCount / 4) throw new ArgumentOutOfRangeException();
 
-        int[] mafiaIndices = new int[mafiaCount];
-        
-        Random rand = new();
-        for (int i = 0; i < mafiaCount; i++) // Select random mafias
-            mafiaIndices[i] = rand.Next(0, _playerCount);
-        
-        CardDto[][] hands = _deck.DealCards(_playerCount);
-        
-        // Assign player details: Name, Role, Hand and whether they're a mafia
-        for (int playerIndex = 0; playerIndex < _playerCount; playerIndex++)
+        int mafias = 0;
+        while (true)
         {
-            CardDto[] hand = hands[playerIndex];
-            if (mafiaIndices.Contains(playerIndex))
-                _players[playerIndex] = new PlayerDto
+            foreach (string pid in _players.Keys)
+            {
+                bool isMafia = UniversalRandom.Rand.Next(0, playerCount) < mafiaCount;
+                _players[pid].IsMafia = isMafia;
+                if (isMafia)
                 {
-                    Name = _players[playerIndex].Name,
-                    Role = GetRoleFromHand(hand),
-                    IsMafia = true,
-                    Hand =  hand,
-                    Living = true,
-                    Jailed = false
-                };
-            else
-                _players[playerIndex] = new PlayerDto
-                {
-                    Name = _players[playerIndex].Name,
-                    Role = GetRoleFromHand(hand),
-                    IsMafia = false,
-                    Hand =  hand,
-                    Living = true,
-                    Jailed = false
-                };
+                    mafias++;
+                    if (mafias == mafiaCount) break;
+                }
+            }
         }
+    }
+
+    // Adds a player to the game
+    public void AddPlayer(string pid, string name)
+    {
+        if (name.Length > 15) throw new ArgumentOutOfRangeException();
+        CardDto[] playerHand = new CardDto[2];
+        Player playerData = new Player
+        {
+            Name = name,
+            Role = GetRoleFromHand(playerHand),
+            Hand = playerHand,
+            Jailed = false,
+            Living = true
+        };
+        _players.Add(pid, playerData);
     }
     
     // Gets all player data
-    public Dictionary<int, PlayerDto> GetPlayers => _players;
+    public Dictionary<string, string> GetPlayers()
+    {
+        Dictionary<string, string> players = new Dictionary<string, string>();
+        
+        foreach (KeyValuePair<string, Player> player in _players)
+            players.Add(player.Key, player.Value.Name);
+        
+        return players;
+    }
 
     public void DealNightCards()
     {
@@ -75,7 +78,7 @@ public class GameManager
             case Stage.Showdown: break;
         }
         
-        foreach (int pid in _players.Keys)
+        foreach (string pid in _players.Keys)
             _players[pid].Role = GetRoleFromHand(_players[pid].Hand);
         
         if (_currentStage != Stage.Showdown)
@@ -84,30 +87,30 @@ public class GameManager
 
     // Progress to the next level and handle current level
     // Returns updated game information
-    public Dictionary<int, PlayerUpdateDto> UpdatePlayerActions(List<int> mafiaTargets, Dictionary<Role, List<int>> civTargets)
+    public Dictionary<string, PlayerUpdateDto> UpdatePlayerActions(List<string> mafiaTargets, Dictionary<Role, List<string>> civTargets)
     {
-        Dictionary<int, PlayerUpdateDto> updates = new Dictionary<int, PlayerUpdateDto>();
+        Dictionary<string, PlayerUpdateDto> updates = new Dictionary<string, PlayerUpdateDto>();
 
-        foreach (int target in mafiaTargets)
+        foreach (string target in mafiaTargets)
         {
             _players[target].Living = false;
             updates[target] =
                 new PlayerUpdateDto(_players[target].Role, _players[target].Living, _players[target].Jailed);
         }
                 
-        foreach (int pid in civTargets[Role.Vigilante])
+        foreach (string pid in civTargets[Role.Vigilante])
         {
             _players[pid].Living = false;
             updates[pid] = new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed);
         }
         
-        foreach (int pid in civTargets[Role.Jailer])
+        foreach (string pid in civTargets[Role.Jailer])
         {
             _players[pid].Jailed = true;
             updates[pid] = new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed);
         }
         
-        foreach (int pid in civTargets[Role.Doctor])
+        foreach (string pid in civTargets[Role.Doctor])
         {
             _players[pid].Living = true;
             updates[pid] = new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed);
