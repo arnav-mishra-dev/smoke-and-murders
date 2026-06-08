@@ -52,14 +52,17 @@ public class RoomManager
         }
         
         RemovePlayer(roomCode, uid);
+        
+        if (GetPlayers(roomCode).Count == 0) CloseRoom(roomCode);
+        
         await BroadcastAsync(roomCode, JsonSerializer.Serialize(GetPlayers(roomCode)));
 
         WebSocketCloseStatus websocketCloseStatus = webSocket.CloseStatus ?? WebSocketCloseStatus.NormalClosure;
         string closeDescription = webSocket.CloseStatusDescription ?? "Closed abruptly";
         await webSocket.CloseAsync(websocketCloseStatus, closeDescription, CancellationToken.None);
     }
-
-    public string GetOwnerId(string roomId)
+    
+    private string GetOwnerId(string roomId)
     {
         string? owner = _rooms[roomId].OwnerId;
         
@@ -81,7 +84,7 @@ public class RoomManager
         _rooms[roomId].Connections.TryRemove(uid, out _);
     }
     
-    public Dictionary<string, string> GetPlayers(string roomId) =>
+    private Dictionary<string, string> GetPlayers(string roomId) =>
         _rooms[roomId].GameManager.GetPlayers();
     
     public bool RoomExists(string room) =>
@@ -93,14 +96,14 @@ public class RoomManager
     public void SetOwner(string roomId, string uid) =>
         _rooms[roomId].OwnerId = uid;
     
-    public void CloseRoom(string roomId)
+    private void CloseRoom(string roomId)
     {
         foreach (string player in _rooms[roomId].Connections.Keys)
             _rooms[roomId].Connections.TryRemove(player, out _);
         _rooms.TryRemove(roomId, out _);
     }
 
-    public async Task BroadcastAsync(string roomId, string message)
+    private async Task BroadcastAsync(string roomId, string message)
     {
         List<Task> tasks = new List<Task>();
         
@@ -111,7 +114,7 @@ public class RoomManager
         await Task.WhenAll(tasks.ToArray());
     }
     
-    public async Task SendMessageToConnectionAsync(WebSocket webSocket, string message)
+    private async Task SendMessageToConnectionAsync(WebSocket webSocket, string message)
     {
         try
         {
