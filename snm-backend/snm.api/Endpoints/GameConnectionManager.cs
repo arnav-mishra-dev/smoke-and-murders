@@ -32,8 +32,7 @@ public static class GameConnectionManager
                 
                 string uid = Guid.NewGuid().ToString();
                 WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                roomManager.AddPlayer(webSocket, room, uid, username);
-                roomManager.SetOwner(room, uid);
+
                 await roomManager.HandleGameConnections(webSocket, uid, username, room);
             }
             else

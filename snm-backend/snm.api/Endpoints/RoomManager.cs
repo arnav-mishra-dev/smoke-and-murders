@@ -8,6 +8,8 @@ namespace snm.api.Endpoints;
 
 public class RoomManager
 {
+    private const string GameStartedNotif = "{\"type\":\"game-start\"}";
+    
     private record RoomData
     {
         public string? OwnerId;
@@ -17,9 +19,13 @@ public class RoomManager
     
     private readonly ConcurrentDictionary<string, RoomData> _rooms = new();
     
+    // Handles initial user connection and maintaining room
     public async Task HandleGameConnections(WebSocket webSocket, string uid, string username, string roomCode)
     {
         byte[] receiveBuffer = new byte[1024];
+        
+        AddPlayer(webSocket, roomCode, uid, username);
+        SetOwner(roomCode, uid);
         
         if (uid != GetOwnerId(roomCode))
             AddPlayer(webSocket, roomCode, uid, username);
@@ -39,7 +45,7 @@ public class RoomManager
                 {
                     try
                     {
-                        _rooms[roomCode].GameManager.InitializeGame(gameSettings);
+                        _ = Task.Run(() => RunGame(roomCode, gameSettings));
                     }
                     catch
                     {
@@ -51,15 +57,26 @@ public class RoomManager
             result = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
         }
         
+        // Cleanly close a connection and close the room if it's empty
         RemovePlayer(roomCode, uid);
-        
         if (GetPlayers(roomCode).Count == 0) CloseRoom(roomCode);
-        
+        if (!_rooms[roomCode].GameManager.GetPlayers().ContainsKey(GetOwnerId(roomCode)))
+            foreach(var connections in _rooms[roomCode].Connections)
+            {
+                _rooms[roomCode].OwnerId = connections.Key;
+                break;
+            }
         await BroadcastAsync(roomCode, JsonSerializer.Serialize(GetPlayers(roomCode)));
-
         WebSocketCloseStatus websocketCloseStatus = webSocket.CloseStatus ?? WebSocketCloseStatus.NormalClosure;
         string closeDescription = webSocket.CloseStatusDescription ?? "Closed abruptly";
         await webSocket.CloseAsync(websocketCloseStatus, closeDescription, CancellationToken.None);
+    }
+
+    // The main game loop runs here
+    private async Task RunGame(string roomCode, GameSettingsDto gameSettings)
+    {
+        _rooms[roomCode].GameManager.InitializeGame(gameSettings);
+        await BroadcastAsync(roomCode, GameStartedNotif);
     }
     
     private string GetOwnerId(string roomId)
@@ -72,16 +89,18 @@ public class RoomManager
         return owner;
     }
 
-    public void AddPlayer(WebSocket webSocket, string roomId, string uid, string username)
+    private void AddPlayer(WebSocket webSocket, string roomId, string uid, string username)
     {
         _rooms[roomId].GameManager.AddPlayer(uid, username);
         _rooms[roomId].Connections.TryAdd(uid, webSocket);
     }
 
-    public void RemovePlayer(string roomId, string uid)
+    private void RemovePlayer(string roomId, string uid)
     {
         _rooms[roomId].GameManager.RemovePlayer(uid);
         _rooms[roomId].Connections.TryRemove(uid, out _);
+        
+        _ = BroadcastAsync(roomId, JsonSerializer.Serialize(GetPlayers(roomId)));
     }
     
     private Dictionary<string, string> GetPlayers(string roomId) =>
@@ -114,7 +133,7 @@ public class RoomManager
         await Task.WhenAll(tasks.ToArray());
     }
     
-    private async Task SendMessageToConnectionAsync(WebSocket webSocket, string message)
+    private static async Task SendMessageToConnectionAsync(WebSocket webSocket, string message)
     {
         try
         {
