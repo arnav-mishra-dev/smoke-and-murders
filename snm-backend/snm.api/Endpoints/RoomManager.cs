@@ -18,6 +18,7 @@ public class RoomManager
     
     private readonly ConcurrentDictionary<string, RoomData> _rooms = new();
     private readonly ConcurrentQueue<(string uid, TransferDataDto data)> _actions = new();
+    private readonly ConcurrentDictionary<string, string> _votes = new();
     
     // Handles initial user connection and maintaining room
     public async Task HandleGameConnections(WebSocket webSocket, string uid, string username, string roomCode)
@@ -96,69 +97,122 @@ public class RoomManager
     {
         // Initialize game
         _rooms[roomCode].GameManager.InitializeGame(gameSettings);
-        await BroadcastAsync(roomCode, JsonSerializer.Serialize(new TransferDataDto { Type = "start-game" }));
-        
-        // Deal nighttime cards
-        _rooms[roomCode].GameManager.DealNightCards();
-        
-        // Send hand details to players
-        List<Task> handOut = new List<Task>();
-        foreach (var connection in _rooms[roomCode].Connections)
-        {
-            CardDto[] hand = _rooms[roomCode].GameManager.GetPlayerData(connection.Key).Hand;
-            var payload = new
-            {
-                Type = "card-hand",
-                Payload = hand
-            };
-            string message = JsonSerializer.Serialize(payload);
-            handOut.Add(SendMessageToConnectionAsync(connection.Value, message));
-        }
-        await Task.WhenAll(handOut);
-        
-        // Nightfall
-        Dictionary<Role, List<string>> roleActions = new Dictionary<Role, List<string>>();
-        List<string> mafiaTargets = new List<string>();
-        
-        int countdown = gameSettings.TurnPlayTime;
+        await BroadcastAsync(roomCode, JsonSerializer.Serialize(new { Type = "start-game", Payload = "" }));
         while (true)
         {
-            if (countdown <= 0 || _actions.Count == _rooms[roomCode].GameManager.TurnTakerCount) break;
-            
-            //Timer
-            await Task.Delay(1000);
-            countdown--;
-            if (countdown <= 0) break;
-            await BroadcastAsync(roomCode, JsonSerializer.Serialize(new { Type = "time", Payload = countdown}));
-        }
-        
-        while (_actions.TryDequeue(out var action))
-        {
-            if (action.data.Type == "Target")
+            // Deal nighttime cards
+            _rooms[roomCode].GameManager.DealNightCards();
+
+            // Send hand details to players
+            List<Task> handOut = new List<Task>();
+            foreach (var connection in _rooms[roomCode].Connections)
             {
-                string? targetUid = action.data.Payload.Deserialize<string>();
-                if (targetUid == null) break;
-                if (_rooms[roomCode].GameManager.GetPlayerData(action.uid).IsMafia)
+                CardDto[] hand = _rooms[roomCode].GameManager.GetPlayerData(connection.Key).Hand;
+                var payload = new
                 {
-                    mafiaTargets.Add(targetUid);
-                }
-                else
+                    Type = "card-hand",
+                    Payload = hand
+                };
+                string message = JsonSerializer.Serialize(payload);
+                handOut.Add(SendMessageToConnectionAsync(connection.Value, message));
+            }
+
+            await Task.WhenAll(handOut);
+
+            // Nightfall
+            Dictionary<Role, List<string>> roleActions = new Dictionary<Role, List<string>>();
+            List<string> mafiaTargets = new List<string>();
+
+            _actions.Clear();
+            int turnCountdown = gameSettings.TurnPlayTime;
+            while (true)
+            {
+                if (turnCountdown <= 0 || _actions.Count == _rooms[roomCode].GameManager.TurnTakerCount) break;
+
+                //Timer
+                await Task.Delay(1000);
+                turnCountdown--;
+                if (turnCountdown <= 0) break;
+                await BroadcastAsync(roomCode,
+                    JsonSerializer.Serialize(new { Type = "time", Payload = turnCountdown }));
+            }
+
+            while (_actions.TryDequeue(out var action))
+            {
+                if (action.data.Type == "Target")
                 {
-                    Role targeterRole = _rooms[roomCode].GameManager.GetPlayerData(action.uid).Role;
-                    if (!roleActions.TryGetValue(targeterRole, out _))
+                    string? targetUid = action.data.Payload.Deserialize<string>();
+                    if (targetUid == null) break;
+                    if (_rooms[roomCode].GameManager.GetPlayerData(action.uid).IsMafia)
                     {
-                        roleActions.Add(targeterRole, new List<string>());
-                        roleActions[targeterRole].Add(targetUid);
+                        mafiaTargets.Add(targetUid);
                     }
                     else
                     {
-                        roleActions[targeterRole].Add(targetUid);
+                        Role targeterRole = _rooms[roomCode].GameManager.GetPlayerData(action.uid).Role;
+                        if (!roleActions.TryGetValue(targeterRole, out _))
+                        {
+                            roleActions.Add(targeterRole, new List<string>());
+                            roleActions[targeterRole].Add(targetUid);
+                        }
+                        else
+                        {
+                            roleActions[targeterRole].Add(targetUid);
+                        }
                     }
                 }
             }
+
+            var playerStatusUpdates =
+                JsonSerializer.Serialize(_rooms[roomCode].GameManager.UpdatePlayerActions(mafiaTargets, roleActions));
+            await BroadcastAsync(roomCode, playerStatusUpdates);
+
+            // Daytime
+            Dictionary<string, int> votes = new Dictionary<string, int>();
+            foreach (string playerId in _rooms[roomCode].GameManager.GetPlayers().Keys)
+                votes.Add(playerId, 0);
+
+            _actions.Clear();
+            int voteCountdown = gameSettings.VoteTime;
+            while (true)
+            {
+                if (voteCountdown <= 0 || _actions.Count == _rooms[roomCode].GameManager.TurnTakerCount) break;
+
+                //Timer
+                await Task.Delay(1000);
+                voteCountdown--;
+                if (voteCountdown <= 0) break;
+                await BroadcastAsync(roomCode,
+                    JsonSerializer.Serialize(new { Type = "time", Payload = voteCountdown }));
+            }
+
+            while (_actions.TryDequeue(out var action))
+            {
+                string? voteUid = action.data.Payload.Deserialize<string>();
+                if (voteUid == null) break;
+                if (action.data.Type == "Vote")
+                    if (votes.ContainsKey(voteUid))
+                        votes[voteUid]++;
+            }
+
+            int tiedGreatest = 0;
+            int largestVote = 0;
+            string? greatestValue = null;
+            foreach (var vote in votes)
+            {
+                greatestValue ??= vote.Key;
+                if (vote.Value == largestVote) tiedGreatest++;
+                if (vote.Value > largestVote)
+                {
+                    largestVote = vote.Value;
+                    greatestValue = vote.Key;
+                    tiedGreatest = 0;
+                }
+            }
+
+            if (tiedGreatest == 0 && largestVote > 0 && greatestValue != null)
+                _rooms[roomCode].GameManager.KillPlayer(greatestValue);
         }
-        var playerStatusUpdates = JsonSerializer.Serialize(_rooms[roomCode].GameManager.UpdatePlayerActions(mafiaTargets, roleActions));
-        await BroadcastAsync(roomCode, playerStatusUpdates);
     }
     
     private string GetOwnerId(string roomId)

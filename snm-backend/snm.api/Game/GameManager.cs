@@ -63,6 +63,11 @@ public class GameManager
     }
     
     public void RemovePlayer(string pid) => _players.Remove(pid);
+
+    public void KillPlayer(string pid)
+    {
+        _players[pid].Living = false;
+    }
     
     // Gets player names and uuids
     public Dictionary<string, string> GetPlayers()

@@ -4,5 +4,6 @@ public record GameSettingsDto
 {
     public int MafiaCount { get; init; }
     public int TurnPlayTime { get; init; }
+    public int VoteTime { get; init; }
     public int DiscussionTimeout { get; init; }
 }
