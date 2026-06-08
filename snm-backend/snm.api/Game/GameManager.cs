@@ -41,6 +41,8 @@ public class GameManager
     
     public Player GetPlayerData(string pid) => _players[pid];
 
+    public int LivingPlayerCount() => _players.Values.Count(p => p.Living);
+
     // Adds a player to the game
     public void AddPlayer(string pid, string name)
     {
@@ -128,36 +130,31 @@ public class GameManager
 
     // Progress to the next level and handle current level
     // Returns updated game information
-    public Dictionary<string, PlayerUpdateDto> UpdatePlayerActions(List<string> mafiaTargets, Dictionary<Role, List<string>> civTargets)
+    public Dictionary<string, bool> UpdatePlayerActions(List<string> mafiaTargets, Dictionary<Role, List<string>> civTargets)
     {
-        Dictionary<string, PlayerUpdateDto> updates = new Dictionary<string, PlayerUpdateDto>();
+        Dictionary<string, bool> updates = new Dictionary<string, bool>();
         
         foreach (string pid in civTargets[Role.Vigilante])
         {
             _players[pid].Living = false;
-            updates.Add(pid,
-                new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed));
+            updates.Add(pid, false);
         }
 
         foreach (string target in mafiaTargets)
         {
             _players[target].Living = false;
-            updates.Add(target,
-                new PlayerUpdateDto(_players[target].Role, _players[target].Living, _players[target].Jailed));
+            updates.Add(target, false);
         }
         
         foreach (string pid in civTargets[Role.Jailer])
         {
             _players[pid].Jailed = true;
-            updates.Add(pid,
-                new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed));
         }
         
         foreach (string pid in civTargets[Role.Doctor])
         {
             _players[pid].Living = true;
-            updates.Add(pid,
-                new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed));
+            updates.Add(pid, true);
         }
 
         IsNightfall = false;

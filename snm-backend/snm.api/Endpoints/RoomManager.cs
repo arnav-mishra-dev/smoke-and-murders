@@ -62,12 +62,12 @@ public class RoomManager
                         }
                         break;
                     
-                    case "Target":
+                    case "target":
                         if (_rooms[roomCode].GameManager.IsNightfall)
                             _actions.Enqueue((uid, transferData));
                         break;
                     
-                    case "Vote":
+                    case "vote":
                         if (!_rooms[roomCode].GameManager.IsNightfall)
                             _actions.Enqueue((uid, transferData));
                         break;
@@ -100,6 +100,8 @@ public class RoomManager
         await BroadcastAsync(roomCode, JsonSerializer.Serialize(new { Type = "start-game", Payload = "" }));
         while (true)
         {
+            if (gameSettings.MafiaCount < _rooms[roomCode].GameManager.LivingPlayerCount() / 4) break;
+            
             // Deal nighttime cards
             _rooms[roomCode].GameManager.DealNightCards();
 
@@ -139,7 +141,7 @@ public class RoomManager
 
             while (_actions.TryDequeue(out var action))
             {
-                if (action.data.Type == "Target")
+                if (action.data.Type == "target")
                 {
                     string? targetUid = action.data.Payload.Deserialize<string>();
                     if (targetUid == null) break;
@@ -163,9 +165,12 @@ public class RoomManager
                 }
             }
 
-            var playerStatusUpdates =
-                JsonSerializer.Serialize(_rooms[roomCode].GameManager.UpdatePlayerActions(mafiaTargets, roleActions));
-            await BroadcastAsync(roomCode, playerStatusUpdates);
+            var playerStatusUpdates = new
+            {
+                Type = "death-updates",
+                Payload = _rooms[roomCode].GameManager.UpdatePlayerActions(mafiaTargets, roleActions)
+            };
+            await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerStatusUpdates));
 
             // Daytime
             Dictionary<string, int> votes = new Dictionary<string, int>();
@@ -190,7 +195,7 @@ public class RoomManager
             {
                 string? voteUid = action.data.Payload.Deserialize<string>();
                 if (voteUid == null) break;
-                if (action.data.Type == "Vote")
+                if (action.data.Type == "vote")
                     if (votes.ContainsKey(voteUid))
                         votes[voteUid]++;
             }
@@ -211,7 +216,23 @@ public class RoomManager
             }
 
             if (tiedGreatest == 0 && largestVote > 0 && greatestValue != null)
+            {
                 _rooms[roomCode].GameManager.KillPlayer(greatestValue);
+                Dictionary<string, bool> votedPlayer = new() { { greatestValue, false } };
+                var voteUpdate = new
+                {
+                    Type = "death-updates",
+                    Payload = votedPlayer
+                };
+                await BroadcastAsync(roomCode, JsonSerializer.Serialize(voteUpdate));
+            }
+            
+            var endRoundMessage = new
+            {
+                Type = "round-over",
+                Payload = ""
+            };
+            await BroadcastAsync(roomCode, JsonSerializer.Serialize(endRoundMessage));
         }
     }
     
