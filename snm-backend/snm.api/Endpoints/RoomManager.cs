@@ -2,14 +2,13 @@
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using snm.api.DTOs;
 using snm.api.Game;
 
 namespace snm.api.Endpoints;
 
 public class RoomManager
 {
-    private const string GameStartedNotif = "{\"type\":\"game-start\"}";
-    
     private record RoomData
     {
         public string? OwnerId;
@@ -18,6 +17,7 @@ public class RoomManager
     }
     
     private readonly ConcurrentDictionary<string, RoomData> _rooms = new();
+    private readonly ConcurrentQueue<(string uid, TransferDataDto data)> _actions = new();
     
     // Handles initial user connection and maintaining room
     public async Task HandleGameConnections(WebSocket webSocket, string uid, string username, string roomCode)
@@ -37,20 +37,33 @@ public class RoomManager
         while (!webSocket.CloseStatus.HasValue)
         {
             if (result.MessageType == WebSocketMessageType.Close) break;
-            
-            GameSettingsDto? gameSettings = JsonSerializer.Deserialize<GameSettingsDto>(new ArraySegment<byte>(receiveBuffer, 0, result.Count));
-            if (gameSettings != null && uid == GetOwnerId(roomCode))
+            TransferDataDto? transferData =  JsonSerializer.Deserialize<TransferDataDto>(Encoding.UTF8.GetString(receiveBuffer, 0, result.Count));
+            if (transferData != null)
             {
-                if (!_rooms[roomCode].GameManager.GameStarted && GetPlayers(roomCode).Count > 3)
+                switch (transferData.Type)
                 {
-                    try
-                    {
-                        _ = Task.Run(() => RunGame(roomCode, gameSettings));
-                    }
-                    catch
-                    {
-                        throw new HttpRequestException("Invalid game settings");
-                    }
+                    case "GameSettings":
+                        GameSettingsDto? gameSettings = transferData.Payload.Deserialize<GameSettingsDto>();
+                        if (gameSettings != null
+                            && uid == GetOwnerId(roomCode)
+                            && !_rooms[roomCode].GameManager.GameStarted
+                            && GetPlayers(roomCode).Count > 3)
+                        {
+                            try
+                            {
+                                var settings = gameSettings;
+                                _ = Task.Run(() => RunGame(roomCode, settings));
+                            }
+                            catch
+                            {
+                                throw new HttpRequestException("Invalid game settings");
+                            }
+                        }
+                        break;
+                    
+                    default:
+                        _actions.Enqueue((uid, transferData));
+                        break;
                 }
             }
             
@@ -75,8 +88,59 @@ public class RoomManager
     // The main game loop runs here
     private async Task RunGame(string roomCode, GameSettingsDto gameSettings)
     {
+        // Initialize game
         _rooms[roomCode].GameManager.InitializeGame(gameSettings);
-        await BroadcastAsync(roomCode, GameStartedNotif);
+        await BroadcastAsync(roomCode, JsonSerializer.Serialize(new TransferDataDto { Type = "start-game" }));
+        
+        // Deal nighttime cards
+        _rooms[roomCode].GameManager.DealNightCards();
+        
+        // Send hand details to players
+        List<Task> handOut = new List<Task>();
+        foreach (var connection in _rooms[roomCode].Connections)
+        {
+            CardDto[] hand = _rooms[roomCode].GameManager.GetPlayerData(connection.Key).Hand;
+            var payload = new
+            {
+                Type = "card-hand",
+                Payload = hand
+            };
+            string message = JsonSerializer.Serialize(payload);
+            handOut.Add(SendMessageToConnectionAsync(connection.Value, message));
+        }
+        await Task.WhenAll(handOut);
+        
+        // Nightfall
+        Dictionary<Role, List<string>> roleActions = new Dictionary<Role, List<string>>();
+        List<string> mafiaTargets = new List<string>();
+        while (!_actions.IsEmpty)
+        {
+            _actions.TryDequeue(out var action);
+            if (action.data.Type == "Target")
+            {
+                string? targetUid = action.data.Payload.Deserialize<string>();
+                if (targetUid == null) break;
+                if (_rooms[roomCode].GameManager.GetPlayerData(action.uid).IsMafia)
+                {
+                    mafiaTargets.Add(targetUid);
+                }
+                else
+                {
+                    Role targeterRole = _rooms[roomCode].GameManager.GetPlayerData(action.uid).Role;
+                    if (!roleActions.TryGetValue(targeterRole, out _))
+                    {
+                        roleActions.Add(targeterRole, new List<string>());
+                        roleActions[targeterRole].Add(targetUid);
+                    }
+                    else
+                    {
+                        roleActions[targeterRole].Add(targetUid);
+                    }
+                }
+            }
+        }
+        var playerStatusUpdates = JsonSerializer.Serialize(_rooms[roomCode].GameManager.UpdatePlayerActions(mafiaTargets, roleActions));
+        await BroadcastAsync(roomCode, playerStatusUpdates);
     }
     
     private string GetOwnerId(string roomId)
@@ -130,7 +194,7 @@ public class RoomManager
             if (!connection.CloseStatus.HasValue)
                 tasks.Add(SendMessageToConnectionAsync(connection, message));
         
-        await Task.WhenAll(tasks.ToArray());
+        await Task.WhenAll(tasks);
     }
     
     private static async Task SendMessageToConnectionAsync(WebSocket webSocket, string message)

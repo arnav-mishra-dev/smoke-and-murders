@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace snm.api.Game;
+﻿namespace snm.api.DTOs;
 
 public record GameSettingsDto
 {

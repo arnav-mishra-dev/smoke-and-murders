@@ -1,4 +1,6 @@
-﻿namespace snm.api.Game;
+﻿using snm.api.DTOs;
+
+namespace snm.api.Game;
 
 public class GameManager
 {
@@ -34,6 +36,8 @@ public class GameManager
             }
         }
     }
+    
+    public Player GetPlayerData(string pid) => _players[pid];
 
     // Adds a player to the game
     public void AddPlayer(string pid, string name)
@@ -58,7 +62,7 @@ public class GameManager
     
     public void RemovePlayer(string pid) => _players.Remove(pid);
     
-    // Gets all player data
+    // Gets player names and uuids
     public Dictionary<string, string> GetPlayers()
     {
         Dictionary<string, string> players = new Dictionary<string, string>();
@@ -73,6 +77,9 @@ public class GameManager
     {
         switch (_currentStage)
         {
+            case Stage.Initial:
+                break;
+            
             case Stage.Flop:
                 for (int i = 0; i < 3; i++)
                     _communityCards.Add(_deck.DrawRandomCard());
