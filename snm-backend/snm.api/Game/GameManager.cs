@@ -1,31 +1,35 @@
 ﻿namespace snm.api.Game;
 
-public class GameManager(string owner)
+public class GameManager
 {
-    public string OwnerId { get; } = owner;
-    
     private readonly Deck _deck = new();
     private readonly List<CardDto> _communityCards = new();
     private readonly Dictionary<string, Player> _players = new();
     private Stage _currentStage = Stage.Initial;
+    private GameSettingsDto? _gameSettings;
+    
+    public bool GameStarted { get; private set; }
 
     // Called after adding all players
-    public void InitializeGame(int mafiaCount)
+    public void InitializeGame(GameSettingsDto gameSettings)
     {
+        _gameSettings = gameSettings;
+        GameStarted = true;
+        
         int playerCount = _players.Count;
-        if (mafiaCount > playerCount / 4) throw new ArgumentOutOfRangeException();
+        if (_gameSettings.MafiaCount > playerCount / 4) throw new ArgumentOutOfRangeException();
 
         int mafias = 0;
         while (true)
         {
             foreach (string pid in _players.Keys)
             {
-                bool isMafia = UniversalRandom.Rand.Next(0, playerCount) < mafiaCount;
+                bool isMafia = UniversalRandom.Rand.Next(0, playerCount) < _gameSettings.MafiaCount;
                 _players[pid].IsMafia = isMafia;
                 if (isMafia)
                 {
                     mafias++;
-                    if (mafias == mafiaCount) break;
+                    if (mafias == _gameSettings.MafiaCount) break;
                 }
             }
         }
@@ -35,7 +39,12 @@ public class GameManager(string owner)
     public void AddPlayer(string pid, string name)
     {
         if (name.Length > 15) throw new ArgumentOutOfRangeException();
+        
         CardDto[] playerHand = new CardDto[2];
+        
+        for (int i = 0; i < 2; i++)
+            playerHand[i] = _deck.DrawRandomCard();
+        
         Player playerData = new Player
         {
             Name = name,
@@ -47,12 +56,14 @@ public class GameManager(string owner)
         _players.Add(pid, playerData);
     }
     
+    public void RemovePlayer(string pid) => _players.Remove(pid);
+    
     // Gets all player data
     public Dictionary<string, string> GetPlayers()
     {
         Dictionary<string, string> players = new Dictionary<string, string>();
         
-        foreach (KeyValuePair<string, Player> player in _players)
+        foreach (var player in _players)
             players.Add(player.Key, player.Value.Name);
         
         return players;
