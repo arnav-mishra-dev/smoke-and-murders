@@ -22,7 +22,7 @@ public class RoomManager
     // Handles initial user connection and maintaining room
     public async Task HandleGameConnections(WebSocket webSocket, string uid, string username, string roomCode)
     {
-        byte[] receiveBuffer = new byte[1024];
+        byte[] receiveBuffer = new byte[512];
         
         AddPlayer(webSocket, roomCode, uid, username);
         SetOwner(roomCode, uid);
@@ -61,8 +61,14 @@ public class RoomManager
                         }
                         break;
                     
-                    default:
-                        _actions.Enqueue((uid, transferData));
+                    case "Target":
+                        if (_rooms[roomCode].GameManager.IsNightfall)
+                            _actions.Enqueue((uid, transferData));
+                        break;
+                    
+                    case "Vote":
+                        if (!_rooms[roomCode].GameManager.IsNightfall)
+                            _actions.Enqueue((uid, transferData));
                         break;
                 }
             }
@@ -113,9 +119,21 @@ public class RoomManager
         // Nightfall
         Dictionary<Role, List<string>> roleActions = new Dictionary<Role, List<string>>();
         List<string> mafiaTargets = new List<string>();
-        while (!_actions.IsEmpty)
+        
+        int countdown = gameSettings.TurnPlayTime;
+        while (true)
         {
-            _actions.TryDequeue(out var action);
+            if (countdown <= 0 || _actions.Count == _rooms[roomCode].GameManager.TurnTakerCount) break;
+            
+            //Timer
+            await Task.Delay(1000);
+            countdown--;
+            if (countdown <= 0) break;
+            await BroadcastAsync(roomCode, JsonSerializer.Serialize(new { Type = "time", Payload = countdown}));
+        }
+        
+        while (_actions.TryDequeue(out var action))
+        {
             if (action.data.Type == "Target")
             {
                 string? targetUid = action.data.Payload.Deserialize<string>();

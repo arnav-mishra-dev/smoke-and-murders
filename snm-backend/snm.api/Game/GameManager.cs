@@ -11,6 +11,8 @@ public class GameManager
     private GameSettingsDto? _gameSettings;
     
     public bool GameStarted { get; private set; }
+    public bool IsNightfall { get; private set; }
+    public int TurnTakerCount { get; private set; }
 
     // Called after adding all players
     public void InitializeGame(GameSettingsDto gameSettings)
@@ -95,12 +97,28 @@ public class GameManager
             
             case Stage.Showdown: break;
         }
-        
+
+        int turnTakers = 0;
         foreach (string pid in _players.Keys)
+        {
             _players[pid].Role = GetRoleFromHand(_players[pid].Hand);
+            if (_players[pid].IsMafia ||
+                _players[pid].Role is
+                    Role.Doctor or
+                    Role.Detective or
+                    Role.Jailer or
+                    Role.Vigilante)
+            {
+                turnTakers++;
+            }
+        }
+
+        TurnTakerCount = turnTakers;
         
         if (_currentStage != Stage.Showdown)
             _currentStage++;
+
+        IsNightfall = true;
     }
 
     // Progress to the next level and handle current level
@@ -108,31 +126,36 @@ public class GameManager
     public Dictionary<string, PlayerUpdateDto> UpdatePlayerActions(List<string> mafiaTargets, Dictionary<Role, List<string>> civTargets)
     {
         Dictionary<string, PlayerUpdateDto> updates = new Dictionary<string, PlayerUpdateDto>();
+        
+        foreach (string pid in civTargets[Role.Vigilante])
+        {
+            _players[pid].Living = false;
+            updates.Add(pid,
+                new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed));
+        }
 
         foreach (string target in mafiaTargets)
         {
             _players[target].Living = false;
-            updates[target] =
-                new PlayerUpdateDto(_players[target].Role, _players[target].Living, _players[target].Jailed);
-        }
-                
-        foreach (string pid in civTargets[Role.Vigilante])
-        {
-            _players[pid].Living = false;
-            updates[pid] = new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed);
+            updates.Add(target,
+                new PlayerUpdateDto(_players[target].Role, _players[target].Living, _players[target].Jailed));
         }
         
         foreach (string pid in civTargets[Role.Jailer])
         {
             _players[pid].Jailed = true;
-            updates[pid] = new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed);
+            updates.Add(pid,
+                new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed));
         }
         
         foreach (string pid in civTargets[Role.Doctor])
         {
             _players[pid].Living = true;
-            updates[pid] = new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed);
+            updates.Add(pid,
+                new PlayerUpdateDto(_players[pid].Role, _players[pid].Living, _players[pid].Jailed));
         }
+
+        IsNightfall = false;
         
         return updates;
     }
