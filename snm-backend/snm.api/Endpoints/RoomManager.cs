@@ -129,7 +129,7 @@ public class RoomManager
         await BroadcastAsync(roomCode, JsonSerializer.Serialize(new { Type = "start-game", Payload = "" }));
         while (true)
         {
-            if (gameSettings.MafiaCount < _rooms[roomCode].GameManager.LivingPlayerCount() / 4) break;
+            if (gameSettings.MafiaCount <= _rooms[roomCode].GameManager.LivingPlayerCount() / 4) break;
             
             // Deal nighttime cards
             _rooms[roomCode].GameManager.DealNightCards();
@@ -187,7 +187,6 @@ public class RoomManager
                     JsonSerializer.Serialize(new { Type = "time", Payload = turnCountdown }));
             }
 
-
             foreach (Role role in Enum.GetValues(typeof(Role)))
                 roleActions.Add(role, new List<string>());
             while (_actions.TryDequeue(out var action))
@@ -221,8 +220,8 @@ public class RoomManager
             Dictionary<string, int> votes = new Dictionary<string, int>();
             foreach (string playerId in _rooms[roomCode].GameManager.GetPlayers().Keys)
                 votes.Add(playerId, 0);
+            votes.Add("skip", 0);
 
-            Console.WriteLine("Starting timer...");
             _actions.Clear();
             int voteCountdown = gameSettings.VoteTime;
             while (true)
@@ -236,13 +235,13 @@ public class RoomManager
                 await BroadcastAsync(roomCode,
                     JsonSerializer.Serialize(new { Type = "time", Payload = voteCountdown }));
             }
-            Console.WriteLine("Vote Countdown complete");
+            
             while (_actions.TryDequeue(out var action))
             {
                 string? voteUid = action.data.Payload.Deserialize<string>();
                 if (voteUid == null) break;
                 if (action.data.Type == "vote")
-                    if (votes.ContainsKey(voteUid))
+                    if (votes.ContainsKey(voteUid) || voteUid == "skip")
                         votes[voteUid]++;
             }
 
@@ -261,7 +260,7 @@ public class RoomManager
                 }
             }
 
-            if (tiedGreatest == 0 && largestVote > 0 && greatestValue != null)
+            if (greatestValue != "skip" && tiedGreatest == 0 && largestVote > 0 && greatestValue != null)
             {
                 _rooms[roomCode].GameManager.KillPlayer(greatestValue);
                 Dictionary<string, bool> votedPlayer = new() { { greatestValue, false } };
