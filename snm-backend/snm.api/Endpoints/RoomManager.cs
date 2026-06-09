@@ -18,75 +18,104 @@ public class RoomManager
     
     private readonly ConcurrentDictionary<string, RoomData> _rooms = new();
     private readonly ConcurrentQueue<(string uid, TransferDataDto data)> _actions = new();
-    private readonly ConcurrentDictionary<string, string> _votes = new();
     
     // Handles initial user connection and maintaining room
-    public async Task HandleGameConnections(WebSocket webSocket, string uid, string username, string roomCode)
+    public async Task HandleGameConnections(WebSocket webSocket, string uid, string username, string roomCode, bool isHost)
     {
         byte[] receiveBuffer = new byte[512];
         
         AddPlayer(webSocket, roomCode, uid, username);
-        SetOwner(roomCode, uid);
         
-        if (uid != GetOwnerId(roomCode))
-            AddPlayer(webSocket, roomCode, uid, username);
-        
-        await webSocket.SendAsync(Encoding.UTF8.GetBytes(roomCode), WebSocketMessageType.Text, true, CancellationToken.None);
-        await BroadcastAsync(roomCode, JsonSerializer.Serialize(GetPlayers(roomCode)));
+        if (isHost)
+            SetOwner(roomCode, uid);
+
+        var roomCodeJson = new
+        {
+            Type = "room-code",
+            Payload = roomCode,
+        };
+        await webSocket.SendAsync(JsonSerializer.SerializeToUtf8Bytes(roomCodeJson), WebSocketMessageType.Text, true, CancellationToken.None);
+        var playerList = new
+        {
+            Type = "player-list",
+            Payload = GetPlayers(roomCode)
+        };
+        await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerList));
         
         var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
         while (!webSocket.CloseStatus.HasValue)
         {
             if (result.MessageType == WebSocketMessageType.Close) break;
-            TransferDataDto? transferData =  JsonSerializer.Deserialize<TransferDataDto>(Encoding.UTF8.GetString(receiveBuffer, 0, result.Count));
-            if (transferData != null)
+            try
             {
-                switch (transferData.Type)
+                TransferDataDto? transferData =
+                    JsonSerializer.Deserialize<TransferDataDto>(Encoding.UTF8.GetString(receiveBuffer, 0, result.Count));
+                if (transferData != null)
                 {
-                    case "GameSettings":
-                        GameSettingsDto? gameSettings = transferData.Payload.Deserialize<GameSettingsDto>();
-                        if (gameSettings != null
-                            && uid == GetOwnerId(roomCode)
-                            && !_rooms[roomCode].GameManager.GameStarted
-                            && GetPlayers(roomCode).Count > 3)
-                        {
-                            try
+                    Console.WriteLine($"Sent message {transferData.Type}");
+                    switch (transferData.Type)
+                    {
+                        case "game-settings":
+                            GameSettingsDto? gameSettings = transferData.Payload.Deserialize<GameSettingsDto>();
+                            Console.WriteLine("Deserialized game settings");
+                            Console.WriteLine(gameSettings);
+                            if (gameSettings != null
+                                && isHost
+                                && !_rooms[roomCode].GameManager.GameStarted
+                                && GetPlayers(roomCode).Count > 3)
                             {
-                                var settings = gameSettings;
-                                _ = Task.Run(() => RunGame(roomCode, settings));
+                                Console.WriteLine("Game settings conditions are met");
+                                try
+                                {
+                                    var settings = gameSettings;
+                                    _ = Task.Run(() => RunGame(roomCode, settings));
+                                }
+                                catch
+                                {
+                                    Console.WriteLine("Invalid game settings");
+                                }
                             }
-                            catch
-                            {
-                                throw new HttpRequestException("Invalid game settings");
-                            }
-                        }
-                        break;
-                    
-                    case "target":
-                        if (_rooms[roomCode].GameManager.IsNightfall)
-                            _actions.Enqueue((uid, transferData));
-                        break;
-                    
-                    case "vote":
-                        if (!_rooms[roomCode].GameManager.IsNightfall)
-                            _actions.Enqueue((uid, transferData));
-                        break;
+
+                            break;
+
+                        case "target":
+                            if (_rooms[roomCode].GameManager.IsNightfall)
+                                if (_actions.All(p => p.uid != uid))
+                                    _actions.Enqueue((uid, transferData));
+                            break;
+
+                        case "vote":
+                            if (!_rooms[roomCode].GameManager.IsNightfall)
+                                if (_actions.All(p => p.uid != uid))
+                                    _actions.Enqueue((uid, transferData));
+                            break;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Received null value");
                 }
             }
-            
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error: {e.Message}");
+            }
+
             result = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
         }
         
         // Cleanly close a connection and close the room if it's empty
         RemovePlayer(roomCode, uid);
         if (GetPlayers(roomCode).Count == 0) CloseRoom(roomCode);
-        if (!_rooms[roomCode].GameManager.GetPlayers().ContainsKey(GetOwnerId(roomCode)))
-            foreach(var connections in _rooms[roomCode].Connections)
+        else if (!_rooms[roomCode].GameManager.GetPlayers().ContainsKey(GetOwnerId(roomCode)))
+        {
+            foreach (var connections in _rooms[roomCode].Connections)
             {
                 _rooms[roomCode].OwnerId = connections.Key;
                 break;
             }
-        await BroadcastAsync(roomCode, JsonSerializer.Serialize(GetPlayers(roomCode)));
+            await BroadcastAsync(roomCode, JsonSerializer.Serialize(GetPlayers(roomCode)));
+        }
         WebSocketCloseStatus websocketCloseStatus = webSocket.CloseStatus ?? WebSocketCloseStatus.NormalClosure;
         string closeDescription = webSocket.CloseStatusDescription ?? "Closed abruptly";
         await webSocket.CloseAsync(websocketCloseStatus, closeDescription, CancellationToken.None);
@@ -104,6 +133,12 @@ public class RoomManager
             
             // Deal nighttime cards
             _rooms[roomCode].GameManager.DealNightCards();
+            var communityCards = new
+            {
+                Type = "community-cards",
+                Payload = _rooms[roomCode].GameManager.GetCommunityCards()
+            };
+            await BroadcastAsync(roomCode, JsonSerializer.Serialize(communityCards));
 
             // Send hand details to players
             List<Task> handOut = new List<Task>();
@@ -118,8 +153,21 @@ public class RoomManager
                 string message = JsonSerializer.Serialize(payload);
                 handOut.Add(SendMessageToConnectionAsync(connection.Value, message));
             }
-
             await Task.WhenAll(handOut);
+
+            foreach (var connection in _rooms[roomCode].Connections)
+            {
+                var roleMessage = new
+                {
+                    Type = "role-message",
+                    Payload = new
+                    {
+                        _rooms[roomCode].GameManager.GetPlayerData(connection.Key).IsMafia,
+                        _rooms[roomCode].GameManager.GetPlayerData(connection.Key).Role
+                    }
+                };
+                await SendMessageToConnectionAsync(connection.Value, JsonSerializer.Serialize(roleMessage));
+            }
 
             // Nightfall
             Dictionary<Role, List<string>> roleActions = new Dictionary<Role, List<string>>();
@@ -139,6 +187,9 @@ public class RoomManager
                     JsonSerializer.Serialize(new { Type = "time", Payload = turnCountdown }));
             }
 
+
+            foreach (Role role in Enum.GetValues(typeof(Role)))
+                roleActions.Add(role, new List<string>());
             while (_actions.TryDequeue(out var action))
             {
                 if (action.data.Type == "target")
@@ -152,15 +203,7 @@ public class RoomManager
                     else
                     {
                         Role targeterRole = _rooms[roomCode].GameManager.GetPlayerData(action.uid).Role;
-                        if (!roleActions.TryGetValue(targeterRole, out _))
-                        {
-                            roleActions.Add(targeterRole, new List<string>());
-                            roleActions[targeterRole].Add(targetUid);
-                        }
-                        else
-                        {
-                            roleActions[targeterRole].Add(targetUid);
-                        }
+                        roleActions[targeterRole].Add(targetUid);
                     }
                 }
             }
@@ -170,18 +213,21 @@ public class RoomManager
                 Type = "death-updates",
                 Payload = _rooms[roomCode].GameManager.UpdatePlayerActions(mafiaTargets, roleActions)
             };
+            
             await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerStatusUpdates));
+            Console.WriteLine("Broadcasted night deaths");
 
             // Daytime
             Dictionary<string, int> votes = new Dictionary<string, int>();
             foreach (string playerId in _rooms[roomCode].GameManager.GetPlayers().Keys)
                 votes.Add(playerId, 0);
 
+            Console.WriteLine("Starting timer...");
             _actions.Clear();
             int voteCountdown = gameSettings.VoteTime;
             while (true)
             {
-                if (voteCountdown <= 0 || _actions.Count == _rooms[roomCode].GameManager.TurnTakerCount) break;
+                if (voteCountdown <= 0 || _actions.Count == _rooms[roomCode].GameManager.LivingPlayerCount()) break;
 
                 //Timer
                 await Task.Delay(1000);
@@ -190,7 +236,7 @@ public class RoomManager
                 await BroadcastAsync(roomCode,
                     JsonSerializer.Serialize(new { Type = "time", Payload = voteCountdown }));
             }
-
+            Console.WriteLine("Vote Countdown complete");
             while (_actions.TryDequeue(out var action))
             {
                 string? voteUid = action.data.Payload.Deserialize<string>();
@@ -234,6 +280,14 @@ public class RoomManager
             };
             await BroadcastAsync(roomCode, JsonSerializer.Serialize(endRoundMessage));
         }
+        
+        var endGameMessage = new
+        {
+            Type = "game-over",
+            Payload = ""
+        };
+        await BroadcastAsync(roomCode, JsonSerializer.Serialize(endGameMessage));
+        _rooms[roomCode].GameManager.ResetGameState();
     }
     
     private string GetOwnerId(string roomId)
@@ -241,7 +295,10 @@ public class RoomManager
         string? owner = _rooms[roomId].OwnerId;
         
         if (owner == null)
-            throw new HttpRequestException("Owner not found");
+        {
+            Console.WriteLine("Owner not found");
+            return  string.Empty;
+        }
         
         return owner;
     }

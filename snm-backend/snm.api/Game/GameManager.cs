@@ -24,7 +24,7 @@ public class GameManager
         if (_gameSettings.MafiaCount > playerCount / 4) throw new ArgumentOutOfRangeException();
 
         int mafias = 0;
-        while (true)
+        do
         {
             foreach (string pid in _players.Keys)
             {
@@ -37,10 +37,13 @@ public class GameManager
                 }
             }
         }
+        while (mafias < _gameSettings.MafiaCount);
     }
     
     public Player GetPlayerData(string pid) => _players[pid];
 
+    public CardDto[] GetCommunityCards() => _communityCards.ToArray();
+    
     public int LivingPlayerCount() => _players.Values.Count(p => p.Living);
 
     // Adds a player to the game
@@ -105,6 +108,7 @@ public class GameManager
             case Stage.Showdown: break;
         }
 
+        // Count players who can take turns
         int turnTakers = 0;
         foreach (string pid in _players.Keys)
         {
@@ -116,6 +120,7 @@ public class GameManager
                     Role.Jailer or
                     Role.Vigilante)
             {
+                Console.WriteLine(_players[pid].Name);
                 turnTakers++;
             }
         }
@@ -134,11 +139,14 @@ public class GameManager
     {
         Dictionary<string, bool> updates = new Dictionary<string, bool>();
         
+        Console.WriteLine("Updating player actions");
         foreach (string pid in civTargets[Role.Vigilante])
         {
             _players[pid].Living = false;
             updates.Add(pid, false);
         }
+        
+        Console.WriteLine("Updated vigilante actions");
 
         foreach (string target in mafiaTargets)
         {
@@ -146,16 +154,22 @@ public class GameManager
             updates.Add(target, false);
         }
         
+        Console.WriteLine("Updated mafia kills");
+        
         foreach (string pid in civTargets[Role.Jailer])
         {
             _players[pid].Jailed = true;
         }
+        
+        Console.WriteLine("Updated jailer actions");
         
         foreach (string pid in civTargets[Role.Doctor])
         {
             _players[pid].Living = true;
             updates.Add(pid, true);
         }
+        
+        Console.WriteLine("Updated Doctor actions");
 
         IsNightfall = false;
         
@@ -245,5 +259,25 @@ public class GameManager
         }
         
         return Role.None;
+    }
+    
+    public void ResetGameState()
+    {
+        IsNightfall = false;
+        GameStarted = false;
+        _deck.ResetDeck();
+        _communityCards.Clear();
+        foreach (string player in _players.Keys)
+        {
+            CardDto[] playerHand = new CardDto[2];
+        
+            for (int i = 0; i < 2; i++)
+                playerHand[i] = _deck.DrawRandomCard();
+        
+            _players[player].Hand = playerHand;
+            _players[player].Role = GetRoleFromHand(playerHand);
+            _players[player].Jailed = false;
+            _players[player].Living = true;
+        }
     }
 }

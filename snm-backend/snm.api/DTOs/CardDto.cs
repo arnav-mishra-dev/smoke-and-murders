@@ -1,4 +1,6 @@
-﻿namespace snm.api.Game;
+﻿using snm.api.Game;
+
+namespace snm.api.DTOs;
 
 public record CardDto
 (

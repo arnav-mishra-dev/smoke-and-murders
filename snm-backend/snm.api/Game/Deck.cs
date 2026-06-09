@@ -1,4 +1,6 @@
-﻿namespace snm.api.Game;
+﻿using snm.api.DTOs;
+
+namespace snm.api.Game;
 
 public class Deck
 {
@@ -8,6 +10,14 @@ public class Deck
     public Deck()
     {
         _cards = new List<CardDto>();
+        for (int s = 1; s <= 4; s++)
+            for (int v = 1; v <= 13; v++)
+                _cards.Add(new CardDto((CardSuit)s, (CardValue)v));
+    }
+
+    public void ResetDeck()
+    {
+        _cards.Clear();
         for (int s = 1; s <= 4; s++)
             for (int v = 1; v <= 13; v++)
                 _cards.Add(new CardDto((CardSuit)s, (CardValue)v));

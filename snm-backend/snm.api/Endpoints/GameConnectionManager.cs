@@ -14,26 +14,28 @@ public static class GameConnectionManager
             if (context.WebSockets.IsWebSocketRequest)
             {
                 string? username = context.Request.Query["username"];
-                string? room = context.Request.Query["room"];
+                string? roomCode = context.Request.Query["room"];
+                bool isHost = false;
                 
                 if (string.IsNullOrEmpty(username))
                     throw new HttpRequestException(StatusCodes.Status400BadRequest.ToString());
                 
-                if (room == null)
+                if (roomCode == null)
                 {
-                    do room = RandomNumberGenerator.GetHexString(6);
-                    while (!roomManager.AddRoom(room, username));
+                    do roomCode = RandomNumberGenerator.GetHexString(6);
+                    while (!roomManager.AddRoom(roomCode, username));
+                    isHost = true;
                 }
                 else
                 {
-                    if (!roomManager.RoomExists(room))
+                    if (!roomManager.RoomExists(roomCode))
                         throw new HttpRequestException(StatusCodes.Status404NotFound.ToString());
                 }
                 
                 string uid = Guid.NewGuid().ToString();
                 WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
 
-                await roomManager.HandleGameConnections(webSocket, uid, username, room);
+                await roomManager.HandleGameConnections(webSocket, uid, username, roomCode, isHost);
             }
             else
             {
