@@ -114,8 +114,14 @@ public class RoomManager
                 _rooms[roomCode].OwnerId = connections.Key;
                 break;
             }
-            await BroadcastAsync(roomCode, JsonSerializer.Serialize(GetPlayers(roomCode)));
         }
+
+        var playerListRemove = new
+        {
+            Type = "player-list",
+            Payload = GetPlayers(roomCode)
+        };
+        await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerListRemove));
         WebSocketCloseStatus websocketCloseStatus = webSocket.CloseStatus ?? WebSocketCloseStatus.NormalClosure;
         string closeDescription = webSocket.CloseStatusDescription ?? "Closed abruptly";
         await webSocket.CloseAsync(websocketCloseStatus, closeDescription, CancellationToken.None);
@@ -312,8 +318,6 @@ public class RoomManager
     {
         _rooms[roomId].GameManager.RemovePlayer(uid);
         _rooms[roomId].Connections.TryRemove(uid, out _);
-        
-        _ = BroadcastAsync(roomId, JsonSerializer.Serialize(GetPlayers(roomId)));
     }
     
     private Dictionary<string, string> GetPlayers(string roomId) =>
