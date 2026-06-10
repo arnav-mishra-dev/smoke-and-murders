@@ -214,12 +214,33 @@ public class GameManager
                 return Role.Vigilante;
             
             // Frequency of every suit
-            Dictionary<CardSuit, int> suitFrequency  = new Dictionary<CardSuit, int>();
+            Dictionary<CardSuit, int> suitFrequency = new Dictionary<CardSuit, int>
+            {
+                { CardSuit.Spades, 0 },
+                { CardSuit.Hearts, 0 },
+                { CardSuit.Diamonds, 0 },
+                { CardSuit.Clubs, 0 }
+            };
             foreach (CardSuit suit in suits)
                 suitFrequency[suit]++;
             
             // Frequency of every value
-            Dictionary<CardValue, int> valueFrequency  = new Dictionary<CardValue, int>();
+            Dictionary<CardValue, int> valueFrequency = new Dictionary<CardValue, int>
+            {
+                { CardValue.Ace, 0 },
+                { CardValue.King, 0 },
+                { CardValue.Queen, 0 },
+                { CardValue.Jack, 0 },
+                { CardValue.Ten, 0 },
+                { CardValue.Nine, 0 },
+                { CardValue.Eight, 0 },
+                { CardValue.Seven, 0 },
+                { CardValue.Six, 0 },
+                { CardValue.Five, 0 },
+                { CardValue.Four, 0 },
+                { CardValue.Three, 0 },
+                { CardValue.Two, 0 },
+            };
             foreach (CardValue val in values)
                 valueFrequency[val]++;
 
