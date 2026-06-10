@@ -133,9 +133,26 @@ public class RoomManager
         // Initialize game
         _rooms[roomCode].GameManager.InitializeGame(gameSettings);
         await BroadcastAsync(roomCode, JsonSerializer.Serialize(new { Type = "start-game", Payload = "" }));
+        
+        // Send hand details to players
+        List<Task> handOut = new List<Task>();
+        foreach (var connection in _rooms[roomCode].Connections)
+        {
+            CardDto[] hand = _rooms[roomCode].GameManager.GetPlayerData(connection.Key).Hand;
+            var payload = new
+            {
+                Type = "card-hand",
+                Payload = hand
+            };
+            string message = JsonSerializer.Serialize(payload);
+            handOut.Add(SendMessageToConnectionAsync(connection.Value, message));
+        }
+        await Task.WhenAll(handOut);
+        
         while (true)
         {
-            if (gameSettings.MafiaCount <= _rooms[roomCode].GameManager.LivingPlayerCount() / 4) break;
+            if (_rooms[roomCode].GameManager.LivingMafiaCount() > _rooms[roomCode].GameManager.LivingPlayerCount() / 4
+                || _rooms[roomCode].GameManager.LivingMafiaCount() == 0) break;
             
             // Deal nighttime cards
             _rooms[roomCode].GameManager.DealNightCards();
@@ -145,21 +162,6 @@ public class RoomManager
                 Payload = _rooms[roomCode].GameManager.GetCommunityCards()
             };
             await BroadcastAsync(roomCode, JsonSerializer.Serialize(communityCards));
-
-            // Send hand details to players
-            List<Task> handOut = new List<Task>();
-            foreach (var connection in _rooms[roomCode].Connections)
-            {
-                CardDto[] hand = _rooms[roomCode].GameManager.GetPlayerData(connection.Key).Hand;
-                var payload = new
-                {
-                    Type = "card-hand",
-                    Payload = hand
-                };
-                string message = JsonSerializer.Serialize(payload);
-                handOut.Add(SendMessageToConnectionAsync(connection.Value, message));
-            }
-            await Task.WhenAll(handOut);
 
             foreach (var connection in _rooms[roomCode].Connections)
             {
@@ -200,7 +202,7 @@ public class RoomManager
                 if (action.data.Type == "target")
                 {
                     string? targetUid = action.data.Payload.Deserialize<string>();
-                    if (targetUid == null) break;
+                    if (targetUid is null) break;
                     if (_rooms[roomCode].GameManager.GetPlayerData(action.uid).IsMafia)
                     {
                         mafiaTargets.Add(targetUid);
@@ -245,7 +247,7 @@ public class RoomManager
             while (_actions.TryDequeue(out var action))
             {
                 string? voteUid = action.data.Payload.Deserialize<string>();
-                if (voteUid == null) break;
+                if (voteUid is null) break;
                 if (action.data.Type == "vote")
                     if (votes.ContainsKey(voteUid) || voteUid == "skip")
                         votes[voteUid]++;
@@ -285,11 +287,16 @@ public class RoomManager
             };
             await BroadcastAsync(roomCode, JsonSerializer.Serialize(endRoundMessage));
         }
-        
+
+        bool civiliansWin = _rooms[roomCode].GameManager.LivingMafiaCount() == 0;
         var endGameMessage = new
         {
             Type = "game-over",
-            Payload = ""
+            Payload = new
+            {
+                Winner = civiliansWin ? "civilians" : "mafias",
+                WinnerList = civiliansWin ? _rooms[roomCode].GameManager.GetPlayers("Civilians") : _rooms[roomCode].GameManager.GetPlayers("Mafias")
+            }
         };
         await BroadcastAsync(roomCode, JsonSerializer.Serialize(endGameMessage));
         _rooms[roomCode].GameManager.ResetGameState();
@@ -299,7 +306,7 @@ public class RoomManager
     {
         string? owner = _rooms[roomId].OwnerId;
         
-        if (owner == null)
+        if (owner is null)
         {
             Console.WriteLine("Owner not found");
             return  string.Empty;

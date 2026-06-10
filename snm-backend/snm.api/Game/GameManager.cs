@@ -28,7 +28,7 @@ public class GameManager
         {
             foreach (string pid in _players.Keys)
             {
-                bool isMafia = UniversalRandom.Rand.Next(0, playerCount) < _gameSettings.MafiaCount;
+                bool isMafia = Random.Shared.Next(0, playerCount) < _gameSettings.MafiaCount;
                 _players[pid].IsMafia = isMafia;
                 if (isMafia)
                 {
@@ -40,11 +40,13 @@ public class GameManager
         while (mafias < _gameSettings.MafiaCount);
     }
     
-    public Player GetPlayerData(string pid) => _players[pid];
-
     public CardDto[] GetCommunityCards() => _communityCards.ToArray();
-    
+    public Player GetPlayerData(string pid) => _players[pid];
     public int LivingPlayerCount() => _players.Values.Count(p => p.Living);
+    public int LivingMafiaCount() => _players.Values.Count(p => p is { IsMafia: true, Living: true });
+    
+    public void RemovePlayer(string pid) => _players.Remove(pid);
+    public void KillPlayer(string pid) => _players[pid].Living = false;
 
     // Adds a player to the game
     public void AddPlayer(string pid, string name)
@@ -67,20 +69,29 @@ public class GameManager
         _players.Add(pid, playerData);
     }
     
-    public void RemovePlayer(string pid) => _players.Remove(pid);
-
-    public void KillPlayer(string pid)
-    {
-        _players[pid].Living = false;
-    }
-    
     // Gets player names and uuids
-    public Dictionary<string, string> GetPlayers()
+    public Dictionary<string, string> GetPlayers(string type = "All")
     {
         Dictionary<string, string> players = new Dictionary<string, string>();
-        
-        foreach (var player in _players)
-            players.Add(player.Key, player.Value.Name);
+        switch (type)
+        {
+            case "All":
+                foreach (var player in _players)
+                    players.Add(player.Key, player.Value.Name);
+                break;
+            
+            case "Mafias":
+                foreach (var player in _players)
+                    if (player.Value.IsMafia)
+                        players.Add(player.Key, player.Value.Name);
+                break;
+            
+            case "Civilians":
+                foreach (var player in _players)
+                    if (!player.Value.IsMafia)
+                        players.Add(player.Key, player.Value.Name);
+                break;
+        }
         
         return players;
     }
@@ -139,14 +150,11 @@ public class GameManager
     {
         Dictionary<string, bool> updates = new Dictionary<string, bool>();
         
-        Console.WriteLine("Updating player actions");
         foreach (string pid in civTargets[Role.Vigilante])
         {
             _players[pid].Living = false;
             updates.Add(pid, false);
         }
-        
-        Console.WriteLine("Updated vigilante actions");
 
         foreach (string target in mafiaTargets)
         {
@@ -154,22 +162,16 @@ public class GameManager
             updates.Add(target, false);
         }
         
-        Console.WriteLine("Updated mafia kills");
-        
         foreach (string pid in civTargets[Role.Jailer])
         {
             _players[pid].Jailed = true;
         }
-        
-        Console.WriteLine("Updated jailer actions");
         
         foreach (string pid in civTargets[Role.Doctor])
         {
             _players[pid].Living = true;
             updates.Add(pid, true);
         }
-        
-        Console.WriteLine("Updated Doctor actions");
 
         IsNightfall = false;
         

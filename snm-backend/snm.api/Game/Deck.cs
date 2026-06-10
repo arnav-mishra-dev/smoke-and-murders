@@ -25,7 +25,7 @@ public class Deck
 
     public CardDto DrawRandomCard()
     {
-        int position = UniversalRandom.Rand.Next(0, _cards.Count);
+        int position = Random.Shared.Next(0, _cards.Count);
         CardDto card = _cards[position];
         
         _cards.RemoveAt(position);
