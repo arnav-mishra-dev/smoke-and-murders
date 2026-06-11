@@ -139,7 +139,7 @@ public class GameManager
         TurnTakerCount = turnTakers;
         
         if (_currentStage != Stage.Showdown)
-            _currentStage++;
+            _currentStage = (Stage)((int)_currentStage + 1);
 
         IsNightfall = true;
     }
@@ -148,34 +148,35 @@ public class GameManager
     // Returns updated game information
     public Dictionary<string, bool> UpdatePlayerActions(List<string> mafiaTargets, Dictionary<Role, List<string>> civTargets)
     {
-        Dictionary<string, bool> updates = new Dictionary<string, bool>();
+        Dictionary<string, bool> deathUpdates = new Dictionary<string, bool>();
+
+        foreach (string playerUid in _players.Keys) // Free jailed players so they can perform actions on the next turn
+            _players[playerUid].Jailed = false;
         
         foreach (string pid in civTargets[Role.Vigilante])
         {
             _players[pid].Living = false;
-            updates.Add(pid, false);
+            deathUpdates.Add(pid, false);
         }
 
         foreach (string target in mafiaTargets)
         {
             _players[target].Living = false;
-            updates.Add(target, false);
+            deathUpdates.Add(target, false);
         }
         
         foreach (string pid in civTargets[Role.Jailer])
-        {
             _players[pid].Jailed = true;
-        }
         
         foreach (string pid in civTargets[Role.Doctor])
         {
             _players[pid].Living = true;
-            updates.Add(pid, true);
+            deathUpdates.Add(pid, true);
         }
 
         IsNightfall = false;
         
-        return updates;
+        return deathUpdates;
     }
 
     // Returns player role based on 2 card hand passed to it and community cards member

@@ -78,17 +78,35 @@ public class RoomManager
 
                             break;
 
+                        // Apparently you can give each case its own scope with curly braces
                         case "target":
-                            if (_rooms[roomCode].GameManager.IsNightfall)
+                        {
+                            var playerData = _rooms[roomCode].GameManager.GetPlayerData(uid);
+                            if (playerData.Role is Role.Doctor or Role.Detective or Role.Jailer or Role.Vigilante
+                                && _rooms[roomCode].GameManager.IsNightfall
+                                && !playerData.Jailed)
                                 if (_actions.All(p => p.uid != uid))
                                     _actions.Enqueue((uid, transferData));
                             break;
+                        }
 
                         case "vote":
-                            if (!_rooms[roomCode].GameManager.IsNightfall)
-                                if (_actions.All(p => p.uid != uid))
+                        {
+                            var playerData = _rooms[roomCode].GameManager.GetPlayerData(uid);
+                            if (_rooms[roomCode].GameManager.IsNightfall || playerData.Jailed) break;
+                            
+                            if (_actions.All(p => p.uid != uid))
+                                if (playerData.Role is Role.Mayor)
+                                {
                                     _actions.Enqueue((uid, transferData));
+                                    _actions.Enqueue((uid, transferData));
+                                }
+                                else
+                                {
+                                    _actions.Enqueue((uid, transferData));
+                                }
                             break;
+                        }
                     }
                 }
                 else
@@ -134,8 +152,21 @@ public class RoomManager
         _rooms[roomCode].GameManager.InitializeGame(gameSettings);
         await BroadcastAsync(roomCode, JsonSerializer.Serialize(new { Type = "start-game", Payload = "" }));
         
+        // Tell each player whether they're a mafia
+        List<Task> mafiaStateMessages = new();
+        foreach (var connection in _rooms[roomCode].Connections)
+        {
+            var roleMessage = new
+            {
+                Type = "mafia-state",
+                Payload = _rooms[roomCode].GameManager.GetPlayerData(connection.Key).IsMafia
+            };
+            mafiaStateMessages.Add(SendMessageToConnectionAsync(connection.Value, JsonSerializer.Serialize(roleMessage)));
+        }
+        await Task.WhenAll(mafiaStateMessages);
+        
         // Send hand details to players
-        List<Task> handOut = new List<Task>();
+        List<Task> handOut = new();
         foreach (var connection in _rooms[roomCode].Connections)
         {
             CardDto[] hand = _rooms[roomCode].GameManager.GetPlayerData(connection.Key).Hand;
@@ -163,23 +194,23 @@ public class RoomManager
             };
             await BroadcastAsync(roomCode, JsonSerializer.Serialize(communityCards));
 
+            List<Task> roleMessages = new();
             foreach (var connection in _rooms[roomCode].Connections)
             {
                 var roleMessage = new
                 {
                     Type = "role-message",
-                    Payload = new
-                    {
-                        _rooms[roomCode].GameManager.GetPlayerData(connection.Key).IsMafia,
-                        _rooms[roomCode].GameManager.GetPlayerData(connection.Key).Role
-                    }
+                    Payload = _rooms[roomCode].GameManager.GetPlayerData(connection.Key).Role
                 };
-                await SendMessageToConnectionAsync(connection.Value, JsonSerializer.Serialize(roleMessage));
+                roleMessages.Add(SendMessageToConnectionAsync(connection.Value, JsonSerializer.Serialize(roleMessage)));
             }
+            await Task.WhenAll(roleMessages);
 
             // Nightfall
             Dictionary<Role, List<string>> roleActions = new Dictionary<Role, List<string>>();
             List<string> mafiaTargets = new List<string>();
+            foreach (Role role in Enum.GetValues(typeof(Role)))
+                roleActions.Add(role, new List<string>());
 
             _actions.Clear();
             int turnCountdown = gameSettings.TurnPlayTime;
@@ -194,24 +225,34 @@ public class RoomManager
                 await BroadcastAsync(roomCode,
                     JsonSerializer.Serialize(new { Type = "time", Payload = turnCountdown }));
             }
-
-            foreach (Role role in Enum.GetValues(typeof(Role)))
-                roleActions.Add(role, new List<string>());
+            
             while (_actions.TryDequeue(out var action))
             {
                 if (action.data.Type == "target")
                 {
-                    string? targetUid = action.data.Payload.Deserialize<string>();
-                    if (targetUid is null) break;
-                    if (_rooms[roomCode].GameManager.GetPlayerData(action.uid).IsMafia)
+                    try
                     {
-                        mafiaTargets.Add(targetUid);
+                        var playerData = _rooms[roomCode].GameManager.GetPlayerData(action.uid);
+                        if (!playerData.Living) break;
+                        
+                        string? targetUid = action.data.Payload.Deserialize<string>();
+                        if (targetUid is null) break;
+                        if (playerData.IsMafia)
+                        {
+                            mafiaTargets.Add(targetUid);
+                        }
+                        else
+                        {
+                            Role targeterRole = playerData.Role;
+                            roleActions[targeterRole].Add(targetUid);
+                        }
                     }
-                    else
+                    catch (Exception e)
                     {
-                        Role targeterRole = _rooms[roomCode].GameManager.GetPlayerData(action.uid).Role;
-                        roleActions[targeterRole].Add(targetUid);
+                        Console.WriteLine(e);
+                        throw;
                     }
+
                 }
             }
 
@@ -249,7 +290,8 @@ public class RoomManager
                 string? voteUid = action.data.Payload.Deserialize<string>();
                 if (voteUid is null) break;
                 if (action.data.Type == "vote")
-                    if (votes.ContainsKey(voteUid) || voteUid == "skip")
+                    if ((votes.ContainsKey(voteUid) && _rooms[roomCode].GameManager.GetPlayerData(voteUid).Living)
+                        || voteUid == "skip")
                         votes[voteUid]++;
             }
 
@@ -275,7 +317,7 @@ public class RoomManager
                 var voteUpdate = new
                 {
                     Type = "death-updates",
-                    Payload = votedPlayer
+                    Payload = new Dictionary<string, bool> { { greatestValue, true } }
                 };
                 await BroadcastAsync(roomCode, JsonSerializer.Serialize(voteUpdate));
             }

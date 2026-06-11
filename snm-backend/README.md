@@ -44,20 +44,36 @@ The values are: MafiaCount, TurnPlayTime, VoteTime.
 {
   "Type": "game-settings",
   "Payload": {
-    "MafiaCount": [integer less than or equal to a quarter of the players in the game],
-    "TurnPlayTime": [max time in seconds for all players to take their nightfall turns],
-    "VoteTime": [max time in seconds for all players to vote]
+    "MafiaCount": "[integer less than or equal to a quarter of the players in the game]",
+    "TurnPlayTime": "[max time in seconds for all players to take their nightfall turns]",
+    "VoteTime": "[max time in seconds for all players to vote]"
   }
 }
 ```
 
 ## Gameplay
-On game start, everyone receives a message with "Type": "start-game" and the "Payload" is an empty string "".
+A card DTO (data transfer object) is represented as JSON with integers as the "Suit" and "Value". The suits are spades, hearts, diamonds and clubs going from 1 to 4 in that order, while values go from the ace to the king, 1 to 13.
 
-A message of "Type": "card-hand" with the "Payload" being a 2 element array of cards is sent to each player. This is their hand for the rest of the game.
+On game start,
+* Everyone receives a message with "Type": "start-game" and the "Payload" is an empty string "".
+* A message of "Type": "mafia-state" with the "Payload" being an "IsMafia" key with a boolean value is sent to each player.
+* A message of "Type": "card-hand" with the "Payload" being a 2 element array of cards is sent to each player. This is their hand for the rest of the game.
 
-A card is represented as JSON with integers as the "Suit" and "Value". The suits are spades, hearts, diamonds and clubs going from 1 to 4 in that order, while values go from the ace to the king, 1 to 13.
+The following stages repeat until either the mafia count is less than a quarter of the player count, or all mafias are
+executed.
 
-The following stages repeat until either the mafia count is less than a quarter of the player count, or all mafias are executed.
+1. "Type": "community-cards" with a Payload of an array of cards is broadcasted to all players. This value is empty in the first round.
+3. Every player receives a "role-message" with the payload having an integral Role value.
+4. Nightfall starts, and every second, every player receives a message of type "time" and with an integer of the remaining time left.
+5. During nightfall, each turn-taking player must send a message of type "target" and with the payload being the target's uid.
+6. Message type "death-updates" is broadcasted
+7. Daytime immediately begins, and the same time message type sends time remaining every second.
+7. Each living player must send a "vote" type message. The payload is the target uid. Mayor votes count for two and jailed player votes are not accepted. *the vote goes to skipping the voting round if the payload is "skip"*
+8. "death-updates" with the voted out player's uid as the only item is broadcasted as the payload if not skipped.
+9. Message type "round-over" with an empty string payload is broadcasted and the cycle repeats.
 
-- Write stages here later
+A "game-over" message is broadcasted. The "Payload" has two keys:
+* "Winner" with value "civilians" or "mafias"
+* "WinnerList" containing a list of key-values in the form "[uid]": "[name]"
+
+The game can then be restarted by sending another "game-settings" message.
