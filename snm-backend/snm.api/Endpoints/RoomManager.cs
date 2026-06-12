@@ -75,7 +75,12 @@ public class RoomManager
                                     Console.WriteLine("Invalid game settings");
                                 }
                             }
-
+                            break;
+                        
+                        case "message":
+                            if (_rooms[roomCode].GameManager.IsNightfall) break;
+                            if (!string.IsNullOrWhiteSpace(transferData.Payload.GetString()))
+                                _ = BroadcastAsync(roomCode, JsonSerializer.Serialize(transferData));
                             break;
 
                         // Apparently you can give each case its own scope with curly braces
@@ -317,7 +322,7 @@ public class RoomManager
                 var voteUpdate = new
                 {
                     Type = "death-updates",
-                    Payload = new Dictionary<string, bool> { { greatestValue, true } }
+                    Payload = votedPlayer
                 };
                 await BroadcastAsync(roomCode, JsonSerializer.Serialize(voteUpdate));
             }

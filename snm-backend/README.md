@@ -50,6 +50,15 @@ The values are: MafiaCount, TurnPlayTime, VoteTime.
   }
 }
 ```
+## Messaging
+A message of type "message" with a string payload can be sent at any point except for nightfall.
+```json
+{
+  "Type": "message",
+  "Payload": "This is my message"
+}
+```
+This exact message is broadcasted to all players in the same format.
 
 ## Gameplay
 A card DTO (data transfer object) is represented as JSON with integers as the "Suit" and "Value". The suits are spades, hearts, diamonds and clubs going from 1 to 4 in that order, while values go from the ace to the king, 1 to 13.
