@@ -1,0 +1,13 @@
+:root {
+  --primary-bg-color: rgb(22, 22, 22);
+  --secondary-bg-color: rgb(14, 14, 14);
+  --primary-color: rgb(206, 206, 206);
+
+  --transition-time: 200ms;
+}
+
+body {
+  margin: auto;
+  background-color: var(--primary-bg-color);
+  color: var(--primary-color);
+}
