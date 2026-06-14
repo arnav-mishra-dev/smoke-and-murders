@@ -1,18 +1,38 @@
 .snm-button{
-    background-color: var(--primary-bg-color);
+    position: relative;
+    background-color: rgb(25, 25, 25);
     color: var(--primary-color);
+    font-family: noir;
     font-size: 3rem;
-    padding: 1rem;
-    border: 0.2rem solid var(--primary-color);
-    border-radius: 1rem;
+    padding: 1.4rem;
+    border: 0px;
+    border-radius: 0.8rem;
 
-    transition: box-shadow var(--transition-time), background-color var(--transition-time);
-}
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
-.snm-button:hover{
-    box-shadow: 10px 10px 15px var(--secondary-bg-color);
+    transition: background-color var(--transition-time);
 }
 
 .snm-button:active{
-    background-color: var(--secondary-bg-color);
+    background-color: rgb(15, 15, 15);
+}
+
+.snm-button::after{
+    content: '';
+    position: absolute;
+    height: 110%;
+    width: 103%;
+    border-radius: 0.5em;
+    background-image: url(./noise.svg);
+    filter: contrast(60%);
+    z-index: -1;
+
+    transition: width var(--transition-time), height var(--transition-time);
+}
+
+.snm-button:hover::after{
+    height: 115%;
+    width: 105%;
 }

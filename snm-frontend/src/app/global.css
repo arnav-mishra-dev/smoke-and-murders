@@ -1,3 +1,8 @@
+@font-face {
+  font-family: noir;
+  src: url(../../public/fonts/noir.woff2);
+}
+
 :root {
   --primary-bg-color: rgb(22, 22, 22);
   --secondary-bg-color: rgb(14, 14, 14);
@@ -8,6 +13,7 @@
 
 body {
   margin: auto;
+  font-family: noir;
   background-color: var(--primary-bg-color);
   color: var(--primary-color);
 }
