@@ -2,26 +2,26 @@
 
 import { useState } from 'react';
 import styles from './mainmenu.module.css';
-import Button from './_components/Button';
-import PopupMenu from './_components/PopupMenu';
+import Button from '@/components/Button';
+import PopupMenu from '@/components/PopupMenu';
 
 export default function MainMenu()
 {
     const [optionsShown, SetOptions] = useState(false);
-    const ToggleOptions = () => optionsShown ? SetOptions(false) : SetOptions(true);
+    const ToggleOptions = () => SetOptions(!optionsShown);
+
+    function handleSubmit(event: Event)
+    {
+        event.preventDefault();
+    }
 
     return(
         <>
         {optionsShown ?
-        <PopupMenu>
-            <form>
-                {/* Input form code */}
-            </form>
-
-            <div style={{display: 'flex', flexDirection: 'row', gap: '3rem'}}>
-                <Button onClick={ToggleOptions}>Apply</Button>
-                <Button onClick={ToggleOptions}>Close</Button>
-            </div>
+        <PopupMenu closeAction={ToggleOptions} submitAction={handleSubmit}>
+            <label>Username:
+                <input type="text"/>
+            </label>
         </PopupMenu>
         : null}
 
