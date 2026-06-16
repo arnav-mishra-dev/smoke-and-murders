@@ -17,6 +17,7 @@ export const MenuPanel = styled.div`
     background-color: var(--primary-bg-color);
     width: 75vw;
     height: 90vh;
+    gap: 5rem;
     flex-direction: column;
     justify-content: center;
     align-items: center;

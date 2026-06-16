@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import styles from './mainmenu.module.css';
-import Button from '@components/Button';
-import PopupMenu from './PopupMenu';
+import Button from './_components/Button';
+import PopupMenu from './_components/PopupMenu';
 
 export default function MainMenu()
 {
@@ -14,9 +14,17 @@ export default function MainMenu()
         <>
         {optionsShown ?
         <PopupMenu>
-            <Button onClick={ToggleOptions}>Close</Button>
+            <form>
+                {/* Input form code */}
+            </form>
+
+            <div style={{display: 'flex', flexDirection: 'row', gap: '3rem'}}>
+                <Button onClick={ToggleOptions}>Apply</Button>
+                <Button onClick={ToggleOptions}>Close</Button>
+            </div>
         </PopupMenu>
         : null}
+
         <div className={styles.container}>
             <div className={styles['title-font']}>Smoke<br/>and<br/>Murders</div>
             <Button>Create Room</Button>

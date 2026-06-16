@@ -26,12 +26,12 @@
     width: 103%;
     border-radius: 0.5em;
     background-image: url(./noise.svg);
-    filter: contrast(60%);
     z-index: -1;
 
-    transition: transform var(--transition-time);
+    transition: width var(--transition-time), height var(--transition-time);
 }
 
 .snm-button:hover::after{
-    transform: scale(1.05);
+    height: 115%;
+    width: 107%;
 }
