@@ -9,7 +9,8 @@
   "dependencies": {
     "next": "^16.2.9",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "styled-components": "^6.4.2"
   },
   "devDependencies": {
     "@types/node": "25.9.3",

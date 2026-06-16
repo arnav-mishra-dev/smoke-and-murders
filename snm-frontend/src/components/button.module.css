@@ -29,10 +29,9 @@
     filter: contrast(60%);
     z-index: -1;
 
-    transition: width var(--transition-time), height var(--transition-time);
+    transition: transform var(--transition-time);
 }
 
 .snm-button:hover::after{
-    height: 115%;
-    width: 105%;
+    transform: scale(1.05);
 }

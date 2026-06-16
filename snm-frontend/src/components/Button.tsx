@@ -1,9 +1,14 @@
 import React from 'react';
 import style from './button.module.css'
 
-export default function Button({ children } : { children : React.ReactNode})
+type ButtonProps = {
+    children: React.ReactNode;
+    onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+};
+
+export default function Button(props : ButtonProps)
 {
     return(
-        <button className={style['snm-button']}>{ children }</button>
+        <button onClick={props.onClick} className={style['snm-button']}>{props.children}</button>
     );
 }
