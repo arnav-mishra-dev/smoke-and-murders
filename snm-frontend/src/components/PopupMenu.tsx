@@ -1,6 +1,8 @@
+'use client'
+
 import styled from "styled-components";
-import Button from "./Button";
-import React, { SubmitEventHandler } from "react";
+import Button from "./button/Button";
+import React, { useState } from "react";
 
 export const Overlay = styled.div`
     position: fixed;
@@ -17,8 +19,8 @@ export const MenuPanel = styled.div`
     position: absolute;
     display: flex;
     background-color: var(--primary-bg-color);
-    width: 75vw;
-    height: 90vh;
+    width: 40rem;
+    height: 50rem;
     gap: 5rem;
     flex-direction: column;
     justify-content: center;
@@ -51,12 +53,14 @@ export const CloseIcon = styled.button`
     }
 `
 
-export default function PopupMenu({ children, closeAction, submitAction } :
+export default function PopupMenu({ children, visible, closeAction, submitAction } :
     { children? : React.ReactNode,
+        visible : boolean,
         closeAction : () => void,
         submitAction : (event) => void })
 {
     return(
+        visible ?
         <Overlay>
             <MenuPanel>
                 <form id="menu-form" onSubmit={submitAction}>
@@ -66,5 +70,6 @@ export default function PopupMenu({ children, closeAction, submitAction } :
                 <CloseIcon onClick={closeAction}>×</CloseIcon>
             </MenuPanel>
         </Overlay>
+        : null
     );
 }
