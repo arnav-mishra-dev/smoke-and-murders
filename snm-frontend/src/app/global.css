@@ -1,7 +1,4 @@
-@font-face {
-  font-family: noir;
-  src: url(../../public/fonts/noir.woff2);
-}
+@import "tailwindcss";
 
 :root {
   --primary-bg-color: rgb(22, 22, 22);
@@ -13,7 +10,6 @@
 
 body {
   margin: auto;
-  font-family: noir;
   background-color: var(--primary-bg-color);
   color: var(--primary-color);
 }

@@ -1,8 +1,7 @@
 'use client'
 
 import styled from "styled-components";
-import Button from "./button/Button";
-import React, { useState } from "react";
+import Button from "./Button";
 
 export const Overlay = styled.div`
     position: fixed;
@@ -35,7 +34,6 @@ export const CloseIcon = styled.button`
     right: 2rem;
     background-color: rgb(25, 25, 25);
     color: var(--primary-color);
-    font-family: noir;
     font-size: 5rem;
     height: 6rem;
     width: 6rem;
