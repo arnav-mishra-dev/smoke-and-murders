@@ -30,7 +30,7 @@ export const StyledInput = styled.input`
     }
 `
 
-export default function InputField({ onChange } : { onChange : (value: string) => void } )
+export default function InputField({ onChange } : { onChange? : (value: string) => void } )
 {
     return(
         <div className='flex flex-col relative justify-center items-end'>
@@ -45,7 +45,7 @@ export default function InputField({ onChange } : { onChange : (value: string) =
             id='input-field'
             type="text"
             maxLength={20}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={onChange ? ((e) => onChange(e.target.value)) : null}
             />
         </div>
     )

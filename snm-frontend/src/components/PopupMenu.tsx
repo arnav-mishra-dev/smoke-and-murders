@@ -9,8 +9,8 @@ export const Overlay = styled.div`
     justify-content: center;
     align-items: center;
     background-color: rgba(0, 0, 0, 0.5);
-    width: 100vw;
-    height: 100vh;
+    width: 100dvw;
+    height: 100dvh;
     z-index: 999;
 `
 
@@ -30,6 +30,9 @@ export const MenuPanel = styled.div`
 
 export const CloseIcon = styled.button`
     position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     top: 2rem;
     right: 2rem;
     background-color: rgb(25, 25, 25);
@@ -37,10 +40,18 @@ export const CloseIcon = styled.button`
     font-size: 5rem;
     height: 6rem;
     width: 6rem;
-    border: 0px;
-    border-radius: 100%;
+    border-radius: 50%;
 
     transition: background-color var(--transition-time);
+
+    &::after{
+        content: '';
+        background-image: url('/close-icon.svg');
+        width: 3rem;
+        height: 3rem;
+
+        background-size: contain;
+    }
 
     &:hover{
         background-color: rgb(30, 30, 30);
@@ -65,7 +76,7 @@ export default function PopupMenu({ children, visible, closeAction, submitAction
                     {children}
                 </form>
                 <Button form="menu-form">Apply</Button>
-                <CloseIcon onClick={closeAction}>×</CloseIcon>
+                <CloseIcon onClick={closeAction} />
             </MenuPanel>
         </Overlay>
         : null
