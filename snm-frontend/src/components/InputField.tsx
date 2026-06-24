@@ -5,7 +5,7 @@ import styled from 'styled-components';
 export const StyledInput = styled.input`
     position: relative;
     background-color: transparent;
-    width: 25rem;
+    width: 20rem;
     color: var(--primary-color);
     text-align: center;
     line-height: 1;

@@ -18,7 +18,6 @@ export const HandContainer = styled.div`
     position: absolute;
     display: flex;
     justify-content: flex-end;
-    background-color: rgba(255, 0, 0, 0.4);
     width: 100%;
 `
 
@@ -31,20 +30,14 @@ export const Hand = styled.div`
     background-color: white;
 `
 
-export const HandShaft = () => <HandContainer><Hand /></HandContainer>;
+export const HandShaft = ({ rotation } : {rotation: number}) => <HandContainer style={{rotate: `${rotation}deg`}}><Hand /></HandContainer>;
 
-interface playerData
+export default function Board({ data } : { data: string[] })
 {
-
-};
-
-export default function Board({ data } : { data: playerData[] })
-{
-    const playerHands = data.map((elem, index) => <HandShaft key={index.toString()} />)
-
+    const angleOffset = (320/data.length);
     return(
         <Table>
-            {playerHands}
+            {data.map((_, index) => <HandShaft rotation={(angleOffset/2)+110+index*angleOffset} key={index} />)}
         </Table>
     );
 }

@@ -13,3 +13,6 @@ export const roomConnectionSlice = createSlice({
         }
     }
 });
+
+export const { setWebsocket, closeWebsocket } = roomConnectionSlice.actions;
+export default roomConnectionSlice.reducer;

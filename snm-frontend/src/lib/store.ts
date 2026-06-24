@@ -1,11 +1,13 @@
 import { configureStore } from "@reduxjs/toolkit";
 import usernameReducer from "./features/username/usernameSlice";
+import roomConnectionReducer from "./features/roomConnectionSlice/roomConnectionSlice";
 
 export function makeStore()
 {
     return configureStore({
         reducer: {
-            username: usernameReducer
+            username: usernameReducer,
+            roomConnection: roomConnectionReducer
         }
     });
 }
