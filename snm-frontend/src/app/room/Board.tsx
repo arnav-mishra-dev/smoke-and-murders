@@ -1,5 +1,6 @@
 'use client'
 import styled from "styled-components";
+import './types';
 
 export const Table = styled.div`
     position: relative;
@@ -30,14 +31,20 @@ export const Hand = styled.div`
     background-color: white;
 `
 
-export const HandShaft = ({ rotation } : {rotation: number}) => <HandContainer style={{rotate: `${rotation}deg`}}><Hand /></HandContainer>;
+export const HandShaft = ({ rotation  } : {rotation: number}) => <HandContainer style={{rotate: `${rotation}deg`}}>Ace of spades<Hand /></HandContainer>;
 
-export default function Board({ data } : { data: string[] })
+interface PlayerData
 {
-    const angleOffset = (320/data.length);
+    uuid: string,
+    username: string
+}
+
+export default function Board({ playerData } : { playerData: PlayerData[] })
+{
+    const angleOffset = (320/playerData.length);
     return(
         <Table>
-            {data.map((_, index) => <HandShaft rotation={(angleOffset/2)+110+index*angleOffset} key={index} />)}
+            {playerData.map((_, index) => <HandShaft rotation={(angleOffset/2)+110+index*angleOffset} key={index} />)}
         </Table>
     );
 }

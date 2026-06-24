@@ -45,7 +45,7 @@ export default function InputField({ onChange } : { onChange? : (value: string) 
             id='input-field'
             type="text"
             maxLength={20}
-            onChange={onChange ? ((e) => onChange(e.target.value)) : null}
+            onChange={(e) => onChange?.(e.target.value)}
             />
         </div>
     )
