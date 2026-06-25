@@ -1,4 +1,4 @@
-enum CardSuit
+export enum CardSuit
 {
     Spades = 1,
     Hearts = 2,
@@ -6,7 +6,7 @@ enum CardSuit
     Clubs = 4
 }
 
-enum CardValue
+export enum CardValue
 {
     Ace = 1,
     Two = 2,
@@ -23,8 +23,25 @@ enum CardValue
     King = 13,
 }
 
-interface Card
+export interface Card
 {
     suit: CardSuit,
     value: CardValue
+}
+
+export enum Page
+{
+    Home = 1,
+    Game = 2
+}
+
+export interface GameMessage
+{
+    Type: string,
+    Payload: any
+}
+
+export interface PlayerData
+{
+    [uid: string]: string
 }

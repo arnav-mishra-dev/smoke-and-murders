@@ -1,12 +1,12 @@
 'use client'
-import InputField from "@/components/InputField";
-import { setUsername } from "@/lib/features/username/usernameSlice";
-import { useAppDispatch } from "@/lib/hooks";
+import InputField from "./InputField";
+import { ConnectionContext } from "@/lib/context";
 import Image from "next/image";
+import { use } from "react";
 
 export default function UsernameSetter()
 {
-    const dispatch = useAppDispatch();
+    const context = use(ConnectionContext);
 
     return (
         <div className="flex flex-column top-0 left-0 items-center justify-center gap-2">
@@ -16,7 +16,7 @@ export default function UsernameSetter()
             src="/profile-icon.svg"
             alt="Profile icon"
             />
-            <InputField onChange={ (username) => dispatch(setUsername(username)) } />
+            <InputField onChange={ (username) => context?.SetUsername(username) } />
         </div>
     );
 }
