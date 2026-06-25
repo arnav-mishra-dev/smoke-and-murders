@@ -129,22 +129,23 @@ public class RoomManager
         
         // Cleanly close a connection and close the room if it's empty
         RemovePlayer(roomCode, uid);
-        if (GetPlayers(roomCode).Count == 0) CloseRoom(roomCode);
-        else if (!_rooms[roomCode].GameManager.GetPlayers().ContainsKey(GetOwnerId(roomCode)))
+        if (GetPlayers(roomCode).Count == 0)
         {
-            foreach (var connections in _rooms[roomCode].Connections)
-            {
-                _rooms[roomCode].OwnerId = connections.Key;
-                break;
-            }
+            CloseRoom(roomCode);
         }
-
-        var playerListRemove = new
+        else
         {
-            Type = "player-list",
-            Payload = GetPlayers(roomCode)
-        };
-        await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerListRemove));
+            if (!_rooms[roomCode].GameManager.GetPlayers().ContainsKey(GetOwnerId(roomCode)))
+                _rooms[roomCode].OwnerId = _rooms[roomCode].Connections.FirstOrDefault().Key;
+
+            var playerListRemove = new
+            {
+                Type = "player-list",
+                Payload = GetPlayers(roomCode)
+            };
+            await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerListRemove));
+        }
+        
         WebSocketCloseStatus websocketCloseStatus = webSocket.CloseStatus ?? WebSocketCloseStatus.NormalClosure;
         string closeDescription = webSocket.CloseStatusDescription ?? "Closed abruptly";
         await webSocket.CloseAsync(websocketCloseStatus, closeDescription, CancellationToken.None);
