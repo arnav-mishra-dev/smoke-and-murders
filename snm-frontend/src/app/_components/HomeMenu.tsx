@@ -28,7 +28,7 @@ export default function HomeMenu()
             <Button onClick={() => {
                 if (!(context === null) && context.username)
                 {
-                    context.connection.current = new WebSocket(`ws://localhost:5206/api/ws?username=${context.username}`);
+                    context.connection.current = new WebSocket(`ws://localhost:5000/api/ws?username=${context.username}`);
 
                     context.connection.current?.addEventListener("message", (ev: MessageEvent) => {
                         console.log(ev.data);
