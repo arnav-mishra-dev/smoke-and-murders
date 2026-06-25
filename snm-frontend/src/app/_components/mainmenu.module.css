@@ -1,0 +1,23 @@
+@font-face {
+    font-family: misproject;
+    src: url(/fonts/misproject.woff2);
+}
+
+.container{
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    line-height: 8rem;
+    gap: 2rem;
+    width: 100dvw;
+    height: 100dvh;
+}
+
+.title-font{
+    font-family: misproject;
+    font-size: 10rem;
+    margin-bottom: 2rem;
+    text-align: center;
+}
