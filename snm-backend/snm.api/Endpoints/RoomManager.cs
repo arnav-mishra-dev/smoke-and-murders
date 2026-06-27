@@ -24,131 +24,150 @@ public class RoomManager
     {
         byte[] receiveBuffer = new byte[512];
         
-        AddPlayer(webSocket, roomCode, uid, username);
-        
-        if (isHost)
-            SetOwner(roomCode, uid);
+        try
+        {
+            var playerNames = GetPlayers(roomCode).Values;
+            if (playerNames.Count > 14 || playerNames.Contains(username)) return; // Cancel if username is taken or player count is 15
+            AddPlayer(webSocket, roomCode, uid, username);
+            
+            if (isHost)
+                SetOwner(roomCode, uid);
 
-        var roomCodeJson = new
-        {
-            Type = "room-code",
-            Payload = roomCode,
-        };
-        await webSocket.SendAsync(JsonSerializer.SerializeToUtf8Bytes(roomCodeJson), WebSocketMessageType.Text, true, CancellationToken.None);
-        var playerList = new
-        {
-            Type = "player-list",
-            Payload = GetPlayers(roomCode)
-        };
-        await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerList));
-        
-        var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
-        while (!webSocket.CloseStatus.HasValue)
-        {
-            if (result.MessageType == WebSocketMessageType.Close) break;
-            try
+            var roomCodeJson = new
             {
-                TransferDataDto? transferData =
-                    JsonSerializer.Deserialize<TransferDataDto>(Encoding.UTF8.GetString(receiveBuffer, 0, result.Count));
-                if (transferData != null)
-                {
-                    Console.WriteLine($"Sent message {transferData.Type}");
-                    switch (transferData.Type)
-                    {
-                        case "game-settings":
-                            GameSettingsDto? gameSettings = transferData.Payload.Deserialize<GameSettingsDto>();
-                            Console.WriteLine("Deserialized game settings");
-                            Console.WriteLine(gameSettings);
-                            if (gameSettings != null
-                                && isHost
-                                && !_rooms[roomCode].GameManager.GameStarted
-                                && GetPlayers(roomCode).Count > 3)
-                            {
-                                Console.WriteLine("Game settings conditions are met");
-                                try
-                                {
-                                    var settings = gameSettings;
-                                    _ = Task.Run(() => RunGame(roomCode, settings));
-                                }
-                                catch
-                                {
-                                    Console.WriteLine("Invalid game settings");
-                                }
-                            }
-                            break;
-                        
-                        case "message":
-                            if (_rooms[roomCode].GameManager.IsNightfall) break;
-                            if (!string.IsNullOrWhiteSpace(transferData.Payload.GetString()))
-                                _ = BroadcastAsync(roomCode, JsonSerializer.Serialize(transferData));
-                            break;
+                Type = "room-code",
+                Payload = roomCode,
+            };
+            await webSocket.SendAsync(JsonSerializer.SerializeToUtf8Bytes(roomCodeJson), WebSocketMessageType.Text, true, CancellationToken.None);
 
-                        // Apparently you can give each case its own scope with curly braces
-                        case "target":
-                        {
-                            var playerData = _rooms[roomCode].GameManager.GetPlayerData(uid);
-                            if (playerData.Role is Role.Doctor or Role.Detective or Role.Jailer or Role.Vigilante
-                                && _rooms[roomCode].GameManager.IsNightfall
-                                && !playerData.Jailed)
-                                if (_actions.All(p => p.uid != uid))
-                                    _actions.Enqueue((uid, transferData));
-                            break;
-                        }
-
-                        case "vote":
-                        {
-                            var playerData = _rooms[roomCode].GameManager.GetPlayerData(uid);
-                            if (_rooms[roomCode].GameManager.IsNightfall || playerData.Jailed) break;
-                            
-                            if (_actions.All(p => p.uid != uid))
-                                if (playerData.Role is Role.Mayor)
-                                {
-                                    _actions.Enqueue((uid, transferData));
-                                    _actions.Enqueue((uid, transferData));
-                                }
-                                else
-                                {
-                                    _actions.Enqueue((uid, transferData));
-                                }
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Received null value");
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Error: {e.Message}");
-            }
-
-            result = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
-        }
-        
-        // Cleanly close a connection and close the room if it's empty
-        RemovePlayer(roomCode, uid);
-        if (GetPlayers(roomCode).Count == 0)
-        {
-            CloseRoom(roomCode);
-        }
-        else
-        {
-            if (!_rooms[roomCode].GameManager.GetPlayers().ContainsKey(GetOwnerId(roomCode)))
-                _rooms[roomCode].OwnerId = _rooms[roomCode].Connections.FirstOrDefault().Key;
-
-            var playerListRemove = new
+            var playerList = new
             {
                 Type = "player-list",
                 Payload = GetPlayers(roomCode)
             };
-            await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerListRemove));
+            await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerList));
+
+            var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+
+            while (!webSocket.CloseStatus.HasValue)
+            {
+                if (result.MessageType == WebSocketMessageType.Close) break;
+
+                    TransferDataDto? transferData =
+                        JsonSerializer.Deserialize<TransferDataDto>(Encoding.UTF8.GetString(receiveBuffer, 0, result.Count));
+                    if (transferData != null)
+                    {
+                        Console.WriteLine($"Sent message {transferData.Type}");
+                        switch (transferData.Type)
+                        {
+                            case "game-settings":
+                                GameSettingsDto? gameSettings = transferData.Payload.Deserialize<GameSettingsDto>();
+                                Console.WriteLine("Deserialized game settings");
+                                Console.WriteLine(gameSettings);
+                                if (gameSettings != null
+                                    && isHost
+                                    && !_rooms[roomCode].GameManager.GameStarted
+                                    && GetPlayers(roomCode).Count > 3)
+                                {
+                                    Console.WriteLine("Game settings conditions are met");
+                                    try
+                                    {
+                                        var settings = gameSettings;
+                                        _ = Task.Run(() => RunGame(roomCode, settings));
+                                    }
+                                    catch
+                                    {
+                                        Console.WriteLine("Invalid game settings");
+                                    }
+                                }
+                                break;
+                            
+                            case "message":
+                                if (_rooms[roomCode].GameManager.IsNightfall) break;
+                                if (!string.IsNullOrWhiteSpace(transferData.Payload.GetString()))
+                                    _ = BroadcastAsync(roomCode, JsonSerializer.Serialize(transferData));
+                                break;
+
+                            // Apparently you can give each case its own scope with curly braces
+                            case "target":
+                            {
+                                var playerData = _rooms[roomCode].GameManager.GetPlayerData(uid);
+                                if (playerData.Role is Role.Doctor or Role.Detective or Role.Jailer or Role.Vigilante
+                                    && _rooms[roomCode].GameManager.IsNightfall
+                                    && !playerData.Jailed)
+                                    if (_actions.All(p => p.uid != uid))
+                                        _actions.Enqueue((uid, transferData));
+                                break;
+                            }
+
+                            case "vote":
+                            {
+                                var playerData = _rooms[roomCode].GameManager.GetPlayerData(uid);
+                                if (_rooms[roomCode].GameManager.IsNightfall || playerData.Jailed) break;
+                                
+                                if (_actions.All(p => p.uid != uid))
+                                    if (playerData.Role is Role.Mayor)
+                                    {
+                                        _actions.Enqueue((uid, transferData));
+                                        _actions.Enqueue((uid, transferData));
+                                    }
+                                    else
+                                    {
+                                        _actions.Enqueue((uid, transferData));
+                                    }
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Received null value");
+                    }
+
+                result = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+            }
         }
-        
-        WebSocketCloseStatus websocketCloseStatus = webSocket.CloseStatus ?? WebSocketCloseStatus.NormalClosure;
-        string closeDescription = webSocket.CloseStatusDescription ?? "Closed abruptly";
-        await webSocket.CloseAsync(websocketCloseStatus, closeDescription, CancellationToken.None);
+        catch(WebSocketException e)
+        {
+            Console.WriteLine($"Error: {e.Message}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error: {e.Message}");
+        }
+        finally
+        {
+            // Cleanly close a connection and close the room if it's empty
+            RemovePlayer(roomCode, uid);
+            if (GetPlayers(roomCode).Count == 0)
+            {
+                CloseRoom(roomCode);
+            }
+            else
+            {
+                if (!_rooms[roomCode].GameManager.GetPlayers().ContainsKey(GetOwnerId(roomCode)))
+                {
+                    SetOwner(roomCode, _rooms[roomCode].Connections.FirstOrDefault().Key);
+                    var newOwner = new
+                    {
+                        Type = "new-host",
+                        Payload = _rooms[roomCode].OwnerId
+                    };
+                    await BroadcastAsync(roomCode, JsonSerializer.Serialize(newOwner));
+                }
+
+                var playerListRemove = new
+                {
+                    Type = "player-list",
+                    Payload = GetPlayers(roomCode)
+                };
+                await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerListRemove));
+            }
+            
+            WebSocketCloseStatus websocketCloseStatus = webSocket.CloseStatus ?? WebSocketCloseStatus.NormalClosure;
+            string closeDescription = webSocket.CloseStatusDescription ?? "Closed abruptly";
+            await webSocket.CloseAsync(websocketCloseStatus, closeDescription, CancellationToken.None);
+        }
     }
 
     // The main game loop runs here
