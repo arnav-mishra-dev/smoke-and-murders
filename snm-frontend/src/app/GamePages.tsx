@@ -1,22 +1,27 @@
 'use client'
-import { useRef, useState } from 'react';
-import { ConnectionContext } from '@/lib/context';
-import { Page } from '@/lib/types';
 import HomeMenu from './_components/HomeMenu';
 import Board from './_components/Board';
+import { ConnectionContext } from '@/lib/context';
+import { Page } from '@/lib/types';
+import { useRef, useState } from 'react';
 
 export default function GamePages()
 {
     const connection = useRef<WebSocket | null>(null);
     const [currentPage, SwitchPage] = useState(Page.Home);
     const [username, SetUsername] = useState("");
+    const [players, SetPlayersValue] = useState({});
+    const [roomCode, SetRoomCode] = useState("");
 
     const contextValue = {
         username,
         connection,
-        players: [],
+        players,
+        roomCode,
+        SetRoomCode,
         SwitchPage,
         SetUsername,
+        SetPlayersValue
     };
 
     function getPage(page: Page)
@@ -26,7 +31,7 @@ export default function GamePages()
             case Page.Home:
                 return <HomeMenu />;
             case Page.Game:
-                return <Board playerData={contextValue.players} />;
+                return <Board />;
         }
     }
 
