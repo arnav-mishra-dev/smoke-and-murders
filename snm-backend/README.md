@@ -33,9 +33,17 @@ This returns the room code value again, along with the list of players in the fo
   }
 }
 ```
-Every time a new player joins, the list is resent to the player.
+Every time a new player joins or leaves (even mid game), the list is resent to the players.
 
 *Note: This list includes the player themselves too. The host also receives this list with a single value on room creation*
+
+If the host leaves at any time, a new host is assigned if the room isn't empty. The message broadcasted to players is in the following form:
+```json
+{
+  "Type": "new-host",
+  "Payload": "[new-host-id]"
+}
+```
 
 ## Starting a game
 The game has to be started by the host. This is done by sending 3 values in the payload with the type "game-settings".
