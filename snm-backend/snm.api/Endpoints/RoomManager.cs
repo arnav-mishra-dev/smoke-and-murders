@@ -126,6 +126,10 @@ public class RoomManager
 
                 result = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
             }
+            
+            WebSocketCloseStatus websocketCloseStatus = webSocket.CloseStatus ?? WebSocketCloseStatus.NormalClosure;
+            string closeDescription = webSocket.CloseStatusDescription ?? "Closed abruptly";
+            await webSocket.CloseAsync(websocketCloseStatus, closeDescription, CancellationToken.None);
         }
         catch(WebSocketException e)
         {
@@ -163,10 +167,6 @@ public class RoomManager
                 };
                 await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerListRemove));
             }
-            
-            WebSocketCloseStatus websocketCloseStatus = webSocket.CloseStatus ?? WebSocketCloseStatus.NormalClosure;
-            string closeDescription = webSocket.CloseStatusDescription ?? "Closed abruptly";
-            await webSocket.CloseAsync(websocketCloseStatus, closeDescription, CancellationToken.None);
         }
     }
 
