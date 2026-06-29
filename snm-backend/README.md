@@ -44,6 +44,7 @@ If the host leaves at any time, a new host is assigned if the room isn't empty. 
   "Payload": "[new-host-id]"
 }
 ```
+This message is also broadcasted after player-list upon joining.
 
 ## Starting a game
 The game has to be started by the host. This is done by sending 3 values in the payload with the type "game-settings".

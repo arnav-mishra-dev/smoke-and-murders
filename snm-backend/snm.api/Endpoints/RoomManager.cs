@@ -30,9 +30,6 @@ public class RoomManager
             if (playerNames.Count > 14 || playerNames.Contains(username)) return; // Cancel if username is taken or player count is 15
             AddPlayer(webSocket, roomCode, uid, username);
             
-            if (isHost)
-                SetOwner(roomCode, uid);
-
             var roomCodeJson = new
             {
                 Type = "room-code",
@@ -46,6 +43,20 @@ public class RoomManager
                 Payload = GetPlayers(roomCode)
             };
             await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerList));
+
+            if (isHost)
+            {
+                await SetOwner(roomCode, uid);
+            }
+            else
+            {
+                var newOwner = new
+                {
+                    Type = "new-host",
+                    Payload = _rooms[roomCode].OwnerId
+                };
+                await BroadcastAsync(roomCode, JsonSerializer.Serialize(newOwner));
+            }
 
             var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
 
@@ -151,21 +162,8 @@ public class RoomManager
             {
                 if (!_rooms[roomCode].GameManager.GetPlayers().ContainsKey(GetOwnerId(roomCode)))
                 {
-                    SetOwner(roomCode, _rooms[roomCode].Connections.FirstOrDefault().Key);
-                    var newOwner = new
-                    {
-                        Type = "new-host",
-                        Payload = _rooms[roomCode].OwnerId
-                    };
-                    await BroadcastAsync(roomCode, JsonSerializer.Serialize(newOwner));
+                    await SetOwner(roomCode, _rooms[roomCode].Connections.FirstOrDefault().Key);
                 }
-
-                var playerListRemove = new
-                {
-                    Type = "player-list",
-                    Payload = GetPlayers(roomCode)
-                };
-                await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerListRemove));
             }
         }
     }
@@ -403,8 +401,17 @@ public class RoomManager
     public bool AddRoom(string roomId, string username) =>
         _rooms.TryAdd(roomId, new RoomData());
 
-    public void SetOwner(string roomId, string uid) =>
+    public async Task SetOwner(string roomId, string uid)
+    {
         _rooms[roomId].OwnerId = uid;
+
+        var newOwner = new
+        {
+            Type = "new-host",
+            Payload = _rooms[roomId].OwnerId
+        };
+        await BroadcastAsync(roomId, JsonSerializer.Serialize(newOwner));
+    }
     
     private void CloseRoom(string roomId)
     {
