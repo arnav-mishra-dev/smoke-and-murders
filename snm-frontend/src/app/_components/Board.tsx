@@ -1,8 +1,10 @@
 'use client'
 import styled from "styled-components";
+import Image from "next/image";
 import { use, useEffect } from "react";
 import { ConnectionContext } from "@/lib/context";
 import { Page } from "@/lib/types";
+import Button from "./Button";
 
 export const Table = styled.div`
     position: relative;
@@ -33,13 +35,45 @@ export const Hand = styled.div`
     background-color: white;
 `
 
-export const HandShaft = ({ rotation, name } : {rotation: number, name: string}) =>
+export function CardHand({ rotation } : { rotation: number })
 {
-    return (
+    return(
+        <div
+        style={{rotate: `${rotation}deg`}}
+        className="
+        relative pt-2
+        w-35 h-40">
+            <Image
+            className="
+            absolute
+            left-0 right-0
+            ml-auto mr-auto
+            w-25 h-35
+            -translate-x-1.5 rotate-6"
+            src="/cards/card_back.svg"
+            width={0} height={0}
+            alt="Face down card" />
+            <Image
+            className="
+            absolute
+            left-0 right-0
+            ml-auto mr-auto
+            w-25 h-35
+            translate-x-1.5 -rotate-6"
+            src="/cards/card_back.svg"
+            width={0} height={0}
+            alt="Face down card" />
+        </div>
+    );
+}
+
+export function HandShaft({ rotation, name } : {rotation: number, name: string})
+{
+    return(
         <HandContainer
         className="pr-4"
         style={{rotate: `${rotation}deg`}}>
-            <Hand />
+            <CardHand rotation={-rotation} />
             <span
             className="fixed p-2 rounded-xl translate-x-15 text-2xl font-bold bg-gray-900/80"
             style={{rotate: `${-rotation}deg`}}>
@@ -105,14 +139,14 @@ export default function Board()
     });
 
     return(
-        <div
-        className="flex flex-col pt-15 w-dvw h-dvh items-center gap-40">
-            <Table>
+        <>
+            <Table className="absolute mt-15 my-0 mx-auto">
                 {items}
             </Table>
-            <div className="text-5xl">
-                {context.roomCode}
+            <div className="flex flex-col mt-15 w-dvw items-center gap-15">
+                <div className="text-5xl">Room code: <span className="leading-none p-3 rounded-xl bg-black/10">{context.roomCode}</span></div>
+                <Button>Start Game</Button>
             </div>
-        </div>
+        </>
     );
 }
