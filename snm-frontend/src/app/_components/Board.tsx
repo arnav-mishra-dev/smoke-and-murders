@@ -1,9 +1,9 @@
 'use client'
 import styled from "styled-components";
 import Image from "next/image";
-import { use, useEffect } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { ConnectionContext } from "@/lib/context";
-import { Page } from "@/lib/types";
+import { Page, PlayerData } from "@/lib/types";
 import Button from "./Button";
 
 export const Table = styled.div`
@@ -35,12 +35,12 @@ export const Hand = styled.div`
     background-color: white;
 `
 
-export function CardHand({ rotation } : { rotation: number })
+export function CardHand()
 {
     return(
         <div
-        style={{rotate: `${rotation}deg`}}
         className="
+        rotate-90
         relative pt-2
         w-35 h-40">
             <Image
@@ -73,7 +73,7 @@ export function HandShaft({ rotation, name } : {rotation: number, name: string})
         <HandContainer
         className="pr-4"
         style={{rotate: `${rotation}deg`}}>
-            <CardHand rotation={-rotation} />
+            <CardHand />
             <span
             className="fixed p-2 rounded-xl translate-x-15 text-2xl font-bold bg-gray-900/80"
             style={{rotate: `${-rotation}deg`}}>
@@ -87,6 +87,10 @@ export default function Board()
 {
     const context = use(ConnectionContext);
     if (!context) return;
+
+    const [selfUID, SetUID] = useState<string>("");
+    const [hostUID, SetHostUID] = useState<string>("");
+    const [players, SetPlayersValue] = useState<PlayerData>({});
 
     useEffect(() => {
         const ws = context.roomCode
@@ -105,15 +109,19 @@ export default function Board()
                     context.SetRoomCode(parsedData.Payload);
                     break;
                 case "player-list":
-                    context.SetPlayersValue(parsedData.Payload);
+                    SetPlayersValue(parsedData.Payload);
+                    const playerUID: string | undefined = Object.keys(parsedData.Payload).find((key) => parsedData.Payload[key] === context.username);
+                    SetUID(playerUID? playerUID : "");
                     break;
+                case "new-host":
+                    SetHostUID(parsedData.Payload);
+                break;
             }
         };
 
         ws.onclose = () => {
             console.log("Connection closed");
             context.connection.current = null;
-            context.SetPlayersValue({});
             context.SetRoomCode("");
             context.SwitchPage(Page.Home)
         };
@@ -121,7 +129,6 @@ export default function Board()
         ws.onerror = () => {
             console.error("Connection lost");
             context.connection.current = null;
-            context.SetPlayersValue({});
             context.SetRoomCode("");
             context.SwitchPage(Page.Home);
         };
@@ -133,8 +140,8 @@ export default function Board()
         }
     }, []);
 
-    const angleOffset = (320/Object.keys(context?.players).length);
-    const items = Object.values(context?.players).map((name, index) => {
+    const angleOffset = (320/Object.keys(players).length);
+    const items = Object.values(players).map((name, index) => {
         return <HandShaft key={index} name={name} rotation={(angleOffset/2)+110+index*angleOffset} />;
     });
 
@@ -145,7 +152,11 @@ export default function Board()
             </Table>
             <div className="flex flex-col mt-15 w-dvw items-center gap-15">
                 <div className="text-5xl">Room code: <span className="leading-none p-3 rounded-xl bg-black/10">{context.roomCode}</span></div>
-                <Button>Start Game</Button>
+                {
+                selfUID === hostUID
+                ? <Button onClick={() => console.log(`${selfUID} === ${hostUID}`)}>Start Game</Button>
+                : <span>Waiting for host to start the game...</span>
+                }
             </div>
         </>
     );

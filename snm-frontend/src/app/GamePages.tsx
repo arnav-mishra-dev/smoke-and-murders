@@ -8,20 +8,17 @@ import { useRef, useState } from 'react';
 export default function GamePages()
 {
     const connection = useRef<WebSocket | null>(null);
-    const [currentPage, SwitchPage] = useState(Page.Home);
-    const [username, SetUsername] = useState("");
-    const [players, SetPlayersValue] = useState({});
-    const [roomCode, SetRoomCode] = useState("");
+    const [currentPage, SwitchPage] = useState<Page>(Page.Home);
+    const [username, SetUsername] = useState<string>("");
+    const [roomCode, SetRoomCode] = useState<string>("");
 
     const contextValue = {
         username,
         connection,
-        players,
         roomCode,
         SetRoomCode,
         SwitchPage,
         SetUsername,
-        SetPlayersValue
     };
 
     function getPage(page: Page)
