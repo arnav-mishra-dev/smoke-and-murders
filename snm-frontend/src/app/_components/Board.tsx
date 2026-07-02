@@ -1,7 +1,7 @@
 'use client'
 import styled from "styled-components";
 import Image from "next/image";
-import { use, useEffect, useRef, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import { ConnectionContext } from "@/lib/context";
 import { Page, PlayerData } from "@/lib/types";
 import Button from "./Button";
@@ -91,6 +91,7 @@ export default function Board()
     const [selfUID, SetUID] = useState<string>("");
     const [hostUID, SetHostUID] = useState<string>("");
     const [players, SetPlayersValue] = useState<PlayerData>({});
+    const [gameStarted, SetGameStarted] = useState<boolean>(false);
 
     useEffect(() => {
         const ws = context.roomCode
@@ -115,6 +116,8 @@ export default function Board()
                     break;
                 case "new-host":
                     SetHostUID(parsedData.Payload);
+                case "error":
+                    context.SwitchPage(Page.Home);
                 break;
             }
         };
@@ -140,8 +143,8 @@ export default function Board()
         }
     }, []);
 
-    const angleOffset = (320/Object.keys(players).length);
-    const items = Object.values(players).map((name, index) => {
+    const angleOffset: number = (320/Object.keys(players).length);
+    const items: React.JSX.Element[] = Object.values(players).map((name, index) => {
         return <HandShaft key={index} name={name} rotation={(angleOffset/2)+110+index*angleOffset} />;
     });
 
@@ -150,14 +153,22 @@ export default function Board()
             <Table className="absolute mt-15 my-0 mx-auto">
                 {items}
             </Table>
-            <div className="flex flex-col mt-15 w-dvw items-center gap-15">
-                <div className="text-5xl">Room code: <span className="leading-none p-3 rounded-xl bg-black/10">{context.roomCode}</span></div>
-                {
-                selfUID === hostUID
-                ? <Button onClick={() => console.log(`${selfUID} === ${hostUID}`)}>Start Game</Button>
-                : <span>Waiting for host to start the game...</span>
-                }
-            </div>
+            
+            {
+            gameStarted
+            ?
+                <div className="">
+                </div>
+            :
+                <div className="flex flex-col mt-15 w-dvw items-center gap-15">
+                    <div className="text-5xl">Room code: <span className="leading-none p-3 rounded-xl bg-black/10">{context.roomCode}</span></div>
+                    {
+                    selfUID === hostUID
+                    ? <Button onClick={() => console.log(`${selfUID} === ${hostUID}`)}>Start Game</Button>
+                    : <span>Waiting for host to start the game...</span>
+                    }
+                </div>
+            }
         </>
     );
 }
