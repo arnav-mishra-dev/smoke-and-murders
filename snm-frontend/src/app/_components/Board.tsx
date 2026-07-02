@@ -13,17 +13,11 @@ export const Table = styled.div`
     align-items: center;
     justify-content: space-evenly;
     gap: 5rem;
-    width: 35rem;
-    height: 35rem;
     background: green;
     border-radius: 50%;
-`
-
-export const HandContainer = styled.div`
-    position: absolute;
-    display: flex;
-    justify-content: flex-end;
-    width: 100%;
+    width: 30rem;
+    height: 30rem;
+    aspect-ratio: 1/1;
 `
 
 export const Hand = styled.div`
@@ -40,15 +34,14 @@ export function CardHand()
     return(
         <div
         className="
+        relative
+        flex items-center justify-center
         rotate-90
-        relative pt-2
-        w-35 h-40">
+        w-30 h-30">
             <Image
             className="
             absolute
-            left-0 right-0
-            ml-auto mr-auto
-            w-25 h-35
+            w-20 h-28
             -translate-x-1.5 rotate-6"
             src="/cards/card_back.svg"
             width={0} height={0}
@@ -56,9 +49,7 @@ export function CardHand()
             <Image
             className="
             absolute
-            left-0 right-0
-            ml-auto mr-auto
-            w-25 h-35
+            w-20 h-28
             translate-x-1.5 -rotate-6"
             src="/cards/card_back.svg"
             width={0} height={0}
@@ -70,8 +61,8 @@ export function CardHand()
 export function HandShaft({ rotation, name } : {rotation: number, name: string})
 {
     return(
-        <HandContainer
-        className="pr-4"
+        <div
+        className="absolute flex justify-end w-full"
         style={{rotate: `${rotation}deg`}}>
             <CardHand />
             <span
@@ -79,7 +70,7 @@ export function HandShaft({ rotation, name } : {rotation: number, name: string})
             style={{rotate: `${-rotation}deg`}}>
                 {name}
             </span>
-        </HandContainer>
+        </div>
     );
 }
 
@@ -147,39 +138,39 @@ export default function Board()
     });
 
     return(
-        <>
-            <Table className="absolute mt-15 my-0 mx-auto">
+        <div className="fixed flex flex-col justify-center items-center w-dvw h-dvh gap-5">
+            { gameStarted
+            ?
+            <span className="text-6xl p-5">00:00</span>
+            : null}
+            <Table>
                 {items}
             </Table>
             
-            {
-            gameStarted
+            { gameStarted
             ?
-                <div className="flex flex-row justify-center w-dvw mt-10">
-                    <div className="relative flex justify-center w-70 h-70 bg-amber-600">
-                        <Image
-                        className="absolute w-50 h-70 -rotate-10 -translate-x-15"
-                        src={`/cards/ace_spades.svg`}
-                        width={0} height={0}
-                        alt="First hand card" />
+                <div className="relative flex justify-center items-center w-70 h-75">
+                    <Image
+                    className="absolute w-40 h-56 -rotate-10 -translate-x-10"
+                    src={`/cards/ace_spades.svg`}
+                    width={0} height={0}
+                    alt="First hand card" />
 
-                        <Image
-                        className="absolute w-50 h-70 rotate-10 translate-x-15"
-                        src={`/cards/ace_spades.svg`}
-                        width={0} height={0}
-                        alt="Second hand card" />
-                    </div>
+                    <Image
+                    className="absolute w-40 h-56 rotate-10 translate-x-10"
+                    src={`/cards/ace_spades.svg`}
+                    width={0} height={0}
+                    alt="Second hand card" />
                 </div>
             :
-                <div className="flex flex-col mt-15 w-dvw items-center gap-15">
+                <div className="flex flex-col w-dvw items-center gap-15">
                     <div className="text-5xl">Room code: <span className="leading-none p-3 rounded-xl bg-black/10">{context.roomCode}</span></div>
                     {
                     selfUID === hostUID
                     ? <Button onClick={() => SetGameStarted(true)}>Start Game</Button>
                     : <span>Waiting for host to start the game...</span>
                     }
-                </div>
-            }
-        </>
+                </div> }
+        </div>
     );
 }
