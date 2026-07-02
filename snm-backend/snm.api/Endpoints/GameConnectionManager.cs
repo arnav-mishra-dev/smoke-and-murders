@@ -18,7 +18,7 @@ public static class GameConnectionManager
                 bool isHost = false;
                 
                 if (string.IsNullOrEmpty(username))
-                    throw new HttpRequestException(StatusCodes.Status400BadRequest.ToString());
+                    return;
                 
                 if (roomCode == null)
                 {
@@ -29,7 +29,7 @@ public static class GameConnectionManager
                 else
                 {
                     if (!roomManager.RoomExists(roomCode))
-                        throw new HttpRequestException(StatusCodes.Status404NotFound.ToString());
+                        return;
                 }
                 
                 string uid = Guid.NewGuid().ToString();

@@ -273,7 +273,6 @@ public class RoomManager
                     catch (Exception e)
                     {
                         Console.WriteLine(e);
-                        throw;
                     }
 
                 }
