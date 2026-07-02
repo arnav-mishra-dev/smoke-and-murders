@@ -116,9 +116,7 @@ export default function Board()
                     break;
                 case "new-host":
                     SetHostUID(parsedData.Payload);
-                case "error":
-                    context.SwitchPage(Page.Home);
-                break;
+                    break;
             }
         };
 
@@ -157,14 +155,27 @@ export default function Board()
             {
             gameStarted
             ?
-                <div className="">
+                <div className="flex flex-row justify-center w-dvw mt-10">
+                    <div className="relative flex justify-center w-70 h-70 bg-amber-600">
+                        <Image
+                        className="absolute w-50 h-70 -rotate-10 -translate-x-15"
+                        src={`/cards/ace_spades.svg`}
+                        width={0} height={0}
+                        alt="First hand card" />
+
+                        <Image
+                        className="absolute w-50 h-70 rotate-10 translate-x-15"
+                        src={`/cards/ace_spades.svg`}
+                        width={0} height={0}
+                        alt="Second hand card" />
+                    </div>
                 </div>
             :
                 <div className="flex flex-col mt-15 w-dvw items-center gap-15">
                     <div className="text-5xl">Room code: <span className="leading-none p-3 rounded-xl bg-black/10">{context.roomCode}</span></div>
                     {
                     selfUID === hostUID
-                    ? <Button onClick={() => console.log(`${selfUID} === ${hostUID}`)}>Start Game</Button>
+                    ? <Button onClick={() => SetGameStarted(true)}>Start Game</Button>
                     : <span>Waiting for host to start the game...</span>
                     }
                 </div>
