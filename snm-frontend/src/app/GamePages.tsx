@@ -7,14 +7,12 @@ import { useRef, useState } from 'react';
 
 export default function GamePages()
 {
-    const connection = useRef<WebSocket | null>(null);
     const [currentPage, SwitchPage] = useState<Page>(Page.Home);
     const [username, SetUsername] = useState<string>("");
     const [roomCode, SetRoomCode] = useState<string>("");
 
     const contextValue = {
         username,
-        connection,
         roomCode,
         SetRoomCode,
         SwitchPage,

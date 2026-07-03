@@ -2,11 +2,28 @@
 import { use, useState } from "react";
 import { ConnectionContext } from "@/lib/context";
 import { Page } from "@/lib/types";
+import Image from "next/image";
 import Button from "./Button";
 import PopupMenu from "./PopupMenu";
 import InputField from "./InputField";
-import UsernameSetter from "./UsernameSetter";
 import styles from './mainmenu.module.css';
+
+export function UsernameSetter()
+{
+    const context = use(ConnectionContext);
+
+    return (
+        <div className="flex flex-column top-0 left-0 items-center justify-center gap-2">
+            <Image
+            className="w-20 h-20"
+            width={0} height={0}
+            src="/profile-icon.svg"
+            alt="Profile icon"
+            />
+            <InputField value={context?.username} onChange={ (username) => context?.SetUsername(username) } />
+        </div>
+    );
+}
 
 export default function HomeMenu()
 {

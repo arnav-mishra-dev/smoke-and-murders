@@ -2,6 +2,7 @@
 
 import styled from "styled-components";
 import Button from "./Button";
+import React from "react";
 
 export const Overlay = styled.div`
     position: fixed;
@@ -66,7 +67,7 @@ export default function PopupMenu({ children, visible, closeAction, submitAction
     { children? : React.ReactNode,
         visible : boolean,
         closeAction : () => void,
-        submitAction : (event) => void })
+        submitAction : (event: React.SubmitEvent) => void })
 {
     return(
         visible ?

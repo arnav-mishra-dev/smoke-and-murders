@@ -1,7 +1,7 @@
 'use client'
 import styled from "styled-components";
 import Image from "next/image";
-import React, { use, useEffect, useState } from "react";
+import React, { use, useEffect, useRef, useState } from "react";
 import { ConnectionContext } from "@/lib/context";
 import { Card, Page, PlayerData } from "@/lib/types";
 import Button from "./Button";
@@ -93,79 +93,101 @@ export function HandShaft({ rotation, name } : {rotation: number, name: string})
     );
 }
 
+interface GameSettings
+{
+    MafiaCount: number,
+    TurnPlayTime: number,
+    VoteTime: number
+}
+
 export default function Board()
 {
     const context = use(ConnectionContext);
-    if (!context) return;
 
     const [selfUID, SetUID] = useState<string>("");
     const [hostUID, SetHostUID] = useState<string>("");
     const [players, SetPlayersValue] = useState<PlayerData>({});
     const [gameStarted, SetGameStarted] = useState<boolean>(false);
+    const wsRef = useRef<WebSocket | null>(null);
+
     const [communityCards, SetCommunityCards] = useState<Card[]>([]);
     const [playerHand, SetPlayerHand] = useState<Card[]>([]);
 
-    function SendStartMessage()
-    {
-        SetGameStarted(true);
-    }
+    const [MafiaCount, SetMafiaCount] = useState(1);
+    const [TurnPlayTime, SetTurnPlayTime] = useState(30);
+    const [VoteTime, SetVoteTime] = useState(60);
 
     useEffect(() => {
-        const ws = context.roomCode
-        ? new WebSocket(`ws://localhost:5000/api/ws?username=${context.username}&room=${context.roomCode}`)
-        : new WebSocket(`ws://localhost:5000/api/ws?username=${context.username}`);
+        if (context)
+        {
+            const ws = context.roomCode
+            ? new WebSocket(`ws://localhost:5000/api/ws?username=${context.username}&room=${context.roomCode}`)
+            : new WebSocket(`ws://localhost:5000/api/ws?username=${context.username}`);
 
-        context.connection.current = ws;
-        console.log(`Connected to room ${context.connection.current.url}`);
+            wsRef.current = ws;
+            console.log(`Connected to room ${wsRef.current.url}`);
 
-        ws.onmessage = (ev: MessageEvent) => {
-            const parsedData = JSON.parse(ev.data);
-            console.log(parsedData);
-            switch(parsedData.Type)
-            {
-                case "room-code":
-                    context.SetRoomCode(parsedData.Payload);
-                    break;
-                case "player-list":
-                    SetPlayersValue(parsedData.Payload);
-                    const playerUID: string | undefined = Object.keys(parsedData.Payload).find((key) => parsedData.Payload[key] === context.username);
-                    SetUID(playerUID? playerUID : "");
-                    break;
-                case "new-host":
-                    SetHostUID(parsedData.Payload);
-                    break;
-                case "start-game":
-                    SetGameStarted(true);
-                    break;
-                case "card-hand":
-                    SetPlayerHand(parsedData.Payload);
-                    break;
-                case "community-cards":
-                    SetCommunityCards(parsedData.Payload);
-                    break;
+            ws.onmessage = (ev: MessageEvent) => {
+                const parsedData = JSON.parse(ev.data);
+                console.log(parsedData);
+                switch(parsedData.Type)
+                {
+                    case "room-code":
+                        context.SetRoomCode(parsedData.Payload);
+                        break;
+                    case "player-list":
+                        SetPlayersValue(parsedData.Payload);
+                        const playerUID: string | undefined = Object.keys(parsedData.Payload).find((key) => parsedData.Payload[key] === context.username);
+                        SetUID(playerUID? playerUID : "");
+                        break;
+                    case "new-host":
+                        SetHostUID(parsedData.Payload);
+                        break;
+                    case "start-game":
+                        SetGameStarted(true);
+                        break;
+                    case "card-hand":
+                        SetPlayerHand(parsedData.Payload);
+                        break;
+                    case "community-cards":
+                        SetCommunityCards(parsedData.Payload);
+                        break;
+                }
+            };
+
+            ws.onclose = () => {
+                console.log("Connection closed");
+                wsRef.current = null;
+                context.SetRoomCode("");
+                context.SwitchPage(Page.Home)
+            };
+
+            ws.onerror = () => {
+                console.error("Connection lost");
+                wsRef.current = null;
+                context.SetRoomCode("");
+                context.SwitchPage(Page.Home);
+            };
+
+            return () => {
+                ws.onclose = null;
+                ws.onerror = null;
+                ws?.close();
             }
-        };
-
-        ws.onclose = () => {
-            console.log("Connection closed");
-            context.connection.current = null;
-            context.SetRoomCode("");
-            context.SwitchPage(Page.Home)
-        };
-
-        ws.onerror = () => {
-            console.error("Connection lost");
-            context.connection.current = null;
-            context.SetRoomCode("");
-            context.SwitchPage(Page.Home);
-        };
-
-        return () => {
-            ws.onclose = null;
-            ws.onerror = null;
-            ws?.close();
         }
-    }, []);
+    });
+
+    if (!context) return null;
+
+    function SendStartMessage(message: GameSettings)
+    {
+        wsRef.current?.send(JSON.stringify(
+            {
+                Type: "game-settings",
+                Payload: message
+            }
+        ));
+    }
 
     const angleOffset: number = (320/Object.keys(players).length);
     const items: React.JSX.Element[] = Object.values(players).map((name, index) => {
@@ -196,7 +218,7 @@ export default function Board()
                     <div className="text-5xl">Room code: <span className="leading-none p-3 rounded-xl bg-black/10">{context.roomCode}</span></div>
                     {
                     selfUID === hostUID
-                    ? <Button onClick={SendStartMessage}>Start Game</Button>
+                    ? <Button onClick={() => SendStartMessage({MafiaCount, TurnPlayTime, VoteTime})}>Start Game</Button>
                     : <span className="text-xl">Waiting for host to start the game...</span>
                     }
                 </div> }
