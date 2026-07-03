@@ -160,6 +160,13 @@ public class RoomManager
             }
             else
             {
+                var playerList = new
+                {
+                    Type = "player-list",
+                    Payload = GetPlayers(roomCode)
+                };
+                await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerList));
+                
                 if (!_rooms[roomCode].GameManager.GetPlayers().ContainsKey(GetOwnerId(roomCode)))
                 {
                     await SetOwner(roomCode, _rooms[roomCode].Connections.FirstOrDefault().Key);
