@@ -67,13 +67,13 @@ export default function PopupMenu({ children, visible, closeAction, submitAction
     { children? : React.ReactNode,
         visible : boolean,
         closeAction : () => void,
-        submitAction : (event: React.SubmitEvent) => void })
+        submitAction : () => void })
 {
     return(
         visible ?
         <Overlay>
             <MenuPanel>
-                <form id="menu-form" onSubmit={submitAction}>
+                <form className="flex flex-col gap-10" id="menu-form" action={submitAction}>
                     {children}
                 </form>
                 <Button form="menu-form">Apply</Button>

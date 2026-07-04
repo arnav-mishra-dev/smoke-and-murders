@@ -25,20 +25,14 @@ export enum CardValue
 
 export interface Card
 {
-    suit: CardSuit,
-    value: CardValue
+    Suit: CardSuit,
+    Value: CardValue
 }
 
 export enum Page
 {
     Home = 1,
     Game = 2
-}
-
-export interface GameMessage
-{
-    Type: string,
-    Payload: any
 }
 
 export interface PlayerData

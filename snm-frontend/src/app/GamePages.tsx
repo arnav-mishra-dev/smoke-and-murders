@@ -3,7 +3,7 @@ import HomeMenu from './_components/HomeMenu';
 import Board from './_components/Board';
 import { ConnectionContext } from '@/lib/context';
 import { Page } from '@/lib/types';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 
 export default function GamePages()
 {
@@ -16,7 +16,7 @@ export default function GamePages()
         roomCode,
         SetRoomCode,
         SwitchPage,
-        SetUsername,
+        SetUsername
     };
 
     function getPage(page: Page)

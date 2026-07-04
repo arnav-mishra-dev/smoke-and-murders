@@ -30,7 +30,7 @@ export const StyledInput = styled.input`
     }
 `
 
-export default function InputField({ onChange, value } : { onChange? : (value: string) => void, value?: string } )
+export default function InputField({ onChange, integral, value } : { onChange? : (value: string) => void, integral?: boolean, value?: string } )
 {
     return(
         <div className='flex flex-col relative justify-center items-end'>
@@ -47,6 +47,7 @@ export default function InputField({ onChange, value } : { onChange? : (value: s
             maxLength={20}
             value={value}
             onChange={(e) => onChange?.(e.target.value)}
+            {...(integral ? {type:"number", step:1, min:0} : {})}
             />
         </div>
     )

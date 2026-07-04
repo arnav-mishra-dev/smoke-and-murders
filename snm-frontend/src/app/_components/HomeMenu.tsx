@@ -36,8 +36,7 @@ export default function HomeMenu()
             <PopupMenu
             visible={roomJoinActive}
             closeAction={() => SetRoomJoinShown(false)}
-            submitAction={(e) => {
-                e.preventDefault();
+            submitAction={() => {
                 if (context && (enteredCode.length === 6))
                 {
                     context.SetRoomCode(enteredCode);
