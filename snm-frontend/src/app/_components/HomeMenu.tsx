@@ -17,7 +17,7 @@ export function UsernameSetter()
             <Image
             className="w-20 h-20"
             width={0} height={0}
-            src="/profile-icon.svg"
+            src="/ui/profile-icon.svg"
             alt="Profile icon"
             />
             <InputField value={context?.username} onChange={ (username) => context?.SetUsername(username) } />

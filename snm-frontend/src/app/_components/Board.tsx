@@ -1,21 +1,22 @@
 'use client'
 import styled from "styled-components";
 import Image from "next/image";
-import React, { use, useEffect, useEffectEvent, useRef, useState } from "react";
+import { use, useEffect, useEffectEvent, useRef, useState } from "react";
 import { ConnectionContext } from "@/lib/context";
 import { Card, CardSuit, CardValue, Page, PlayerData } from "@/lib/types";
 import Button from "./Button";
 import PopupMenu from "./PopupMenu";
 import InputField from "./InputField";
+import MenuButton from "./MenuButton";
 
 export const Table = styled.div`
     position: relative;
     display: flex;
+    background-image: url(/centre_table.svg);
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-evenly;
     gap: 5rem;
-    background: green;
     border-radius: 50%;
     width: 30rem;
     height: 30rem;
@@ -31,42 +32,18 @@ export const Hand = styled.div`
     background-color: white;
 `
 
-export function OtherPlayerHand()
+function getCardPath(card: Card)
 {
-    return(
-        <div
-        className="
-        relative
-        flex items-center justify-center
-        rotate-90
-        w-30 h-30">
-            <Image
-            className="
-            absolute
-            w-20 h-28
-            -translate-x-1.5 rotate-6"
-            src="/cards/card_back.svg"
-            width={0} height={0}
-            alt="Face down card" />
-            <Image
-            className="
-            absolute
-            w-20 h-28
-            translate-x-1.5 -rotate-6"
-            src="/cards/card_back.svg"
-            width={0} height={0}
-            alt="Face down card" />
-        </div>
-    );
+    const name = `${CardValue[card.Value]}_${CardSuit[card.Suit]}`.toLowerCase();
+    return `/cards/${name}.svg`;
 }
 
 export function SelfHand({cards} : {cards: Card[]})
 {
     if (cards.length === 0) return null;
 
-    const nameGetter: (card: Card) => string = (card: Card) => `${CardValue[card.Value]}_${CardSuit[card.Suit]}`.toLowerCase();
-    const pathFirst: string = `/cards/${nameGetter(cards[0])}.svg`;
-    const pathSecond: string = `/cards/${nameGetter(cards[1])}.svg`;
+    const pathFirst: string = getCardPath(cards[0]);
+    const pathSecond: string = getCardPath(cards[1]);
 
     return(
         <div className="relative flex flex-col justify-center items-center w-60 h-60 aspect-square">
@@ -85,18 +62,40 @@ export function SelfHand({cards} : {cards: Card[]})
     );
 }
 
-export function HandShaft({ rotation, name } : {rotation: number, name: string})
+export function OtherPlayerHand({ rotation, name } : {rotation: number, name: string})
 {
     return(
         <div
-        className="absolute flex justify-end w-full"
+        className="absolute flex justify-end w-11/12"
         style={{rotate: `${rotation}deg`}}>
-            <OtherPlayerHand />
-            <span
-            className="fixed p-2 rounded-xl translate-x-15 text-2xl font-bold bg-gray-900/80"
-            style={{rotate: `${-rotation}deg`}}>
-                {name}
-            </span>
+            <div
+            className="
+            relative
+            flex items-center justify-center
+            rotate-90
+            w-25 h-30">
+                <Image
+                className="
+                absolute
+                w-20 h-30
+                -translate-x-1.5 rotate-6"
+                src="/cards/card_back.svg"
+                width={0} height={0}
+                alt="Face down card" />
+                <Image
+                className="
+                absolute
+                w-20 h-28
+                translate-x-1.5 -rotate-6"
+                src="/cards/card_back.svg"
+                width={0} height={0}
+                alt="Face down card" />
+            </div>
+
+            <div
+            style={{position: 'fixed', translate: "2rem 0", rotate: `${-rotation}deg`}}>
+                <span className="text-2xl/10 p-2 h-10 rounded-xl bg-gray-900/95">{name}</span>
+            </div>
         </div>
     );
 }
@@ -118,6 +117,7 @@ export default function Board()
     const [players, SetPlayersValue] = useState<PlayerData>({});
     const [gameStarted, SetGameStarted] = useState<boolean>(false);
     const wsRef = useRef<WebSocket | null>(null);
+    const roomCodeRef = useRef<string>(roomCode);
 
     const [communityCards, SetCommunityCards] = useState<Card[]>([]);
     const [playerHand, SetPlayerHand] = useState<Card[]>([]);
@@ -127,72 +127,87 @@ export default function Board()
     const [TurnPlayTime, SetTurnPlayTime] = useState<number>(30);
     const [VoteTime, SetVoteTime] = useState<number>(60);
 
-    const firstConnection = useEffectEvent(() => {
+    const onSocketMessage = useEffectEvent((event: MessageEvent) => {
+        if (!SetRoomCode) return;
+
+        const parsedData = JSON.parse(event.data);
+        console.log(parsedData);
+        switch(parsedData.Type)
+        {
+            case "room-code":
+                SetRoomCode(parsedData.Payload);
+                break;
+            case "player-list":
+                SetPlayersValue(parsedData.Payload);
+                const playerUID: string | undefined = Object.keys(parsedData.Payload).find((key) => parsedData.Payload[key] === username);
+                SetUID(playerUID? playerUID : "");
+                break;
+            case "new-host":
+                SetHostUID(parsedData.Payload);
+                break;
+            case "start-game":
+                SetGameStarted(true);
+                break;
+            case "card-hand":
+                SetPlayerHand(parsedData.Payload);
+                break;
+            case "community-cards":
+                SetCommunityCards(parsedData.Payload);
+                break;
+        }
+    });
+
+    const onSocketClose = useEffectEvent(() => {
         if (!SetRoomCode || !SwitchPage) return;
 
+        console.log("Connection closed");
+        wsRef.current = null;
+        SetRoomCode("");
+        SwitchPage(Page.Home);
+    });
+
+    const onSocketError = useEffectEvent(() => {
+        if (!SetRoomCode || !SwitchPage) return;
+
+        console.error("Connection lost");
+        wsRef.current = null;
+        SetRoomCode("");
+        SwitchPage(Page.Home);
+    });
+
+    const socketCleanup = useEffectEvent(() => {
+        if (wsRef.current)
+        {
+            wsRef.current.onclose = null;
+            wsRef.current.onerror = null;
+            wsRef.current.close();
+        }
+    });
+
+    useEffect(() => {
         console.log("Connecting...");
-        const ws = roomCode
-        ? new WebSocket(`ws://localhost:5000/api/ws?username=${username}&room=${roomCode}`)
+
+        const ws = roomCodeRef.current
+        ? new WebSocket(`ws://localhost:5000/api/ws?username=${username}&room=${roomCodeRef.current}`)
         : new WebSocket(`ws://localhost:5000/api/ws?username=${username}`);
 
         wsRef.current = ws;
         console.log(`Connected to room ${wsRef.current.url}`);
 
         ws.onmessage = (ev: MessageEvent) => {
-            const parsedData = JSON.parse(ev.data);
-            console.log(parsedData);
-            switch(parsedData.Type)
-            {
-                case "room-code":
-                    SetRoomCode(parsedData.Payload);
-                    break;
-                case "player-list":
-                    SetPlayersValue(parsedData.Payload);
-                    const playerUID: string | undefined = Object.keys(parsedData.Payload).find((key) => parsedData.Payload[key] === username);
-                    SetUID(playerUID? playerUID : "");
-                    break;
-                case "new-host":
-                    SetHostUID(parsedData.Payload);
-                    break;
-                case "start-game":
-                    SetGameStarted(true);
-                    break;
-                case "card-hand":
-                    SetPlayerHand(parsedData.Payload);
-                    console.log(parsedData.Payload)
-                    break;
-                case "community-cards":
-                    SetCommunityCards(parsedData.Payload);
-                    break;
-            }
+            onSocketMessage(ev);
         };
 
         ws.onclose = () => {
-            console.log("Connection closed");
-            wsRef.current = null;
-            SetRoomCode("");
-            SwitchPage(Page.Home)
+            onSocketClose();
         };
 
         ws.onerror = () => {
-            console.error("Connection lost");
-            wsRef.current = null;
-            SetRoomCode("");
-            SwitchPage(Page.Home);
+            onSocketError();
         };
-    })
 
-    useEffect(() => {
-        firstConnection();
-        return () => {
-            if (wsRef.current)
-            {
-                wsRef.current.onclose = null;
-                wsRef.current.onerror = null;
-                wsRef.current.close();
-            }
-        }
-    }, []);
+        return socketCleanup;
+    }, [username, SetRoomCode, SwitchPage]);
 
     if (!context) return null;
 
@@ -207,22 +222,17 @@ export default function Board()
         console.log("sent message");
     }
 
-    const angleOffset: number = (320/Object.keys(players).length);
-    const items: React.JSX.Element[] = Object.values(players).map((name, index) => {
-        return <HandShaft key={index} name={name} rotation={(angleOffset/2)+110+index*angleOffset} />;
-    });
-
-    return(
-        <div className="fixed flex flex-col justify-center items-center w-dvw h-dvh gap-3">
-            { gameStarted
-            ?   <span className="text-6xl p-5">00:00</span>
-            :   <>
-                { selfUID == hostUID ?
-                
-                <>
-                <div onClick={() => SetSettingsVisible(true)} className="fixed text-7xl top-0 left-0 bg-gray-700">
-                    <span>Options</span>
-                </div>
+    function getGameOptionsMenu()
+    {
+        if (selfUID == hostUID)
+        {
+            return (
+            <>
+                <MenuButton
+                className="top-3 right-3 lg:top-10 lg:left-10 "
+                onClick={() => SetSettingsVisible(true)}
+                $iconUrl="/ui/cogwheel.svg"
+                $imgSize={30} />
 
                 <PopupMenu
                 visible={settingsVisible}
@@ -241,15 +251,49 @@ export default function Board()
                         <InputField integral={true} value={VoteTime.toString()} onChange={(value) => SetVoteTime(parseInt(value))} />
                     </div>
                 </PopupMenu>
-                </>
+            </>
+            );
+        }
+        else
+        {
+            return null;
+        }
+    }
 
-                : null }
-                </>
+    function getRenderedTable()
+    {
+        const angleOffset: number = (320/Object.keys(players).length);
+
+        return(
+            <Table>
+                {
+                Object.values(players).map((name, index) =>
+                <OtherPlayerHand key={index} name={name} rotation={(angleOffset/2)+110+index*angleOffset} />)
+                }
+                <div className="absolute w-full h-full flex flex-row items-center justify-center">
+                    {
+                        communityCards.map((card, index) =>
+                            <Image
+                            className="w-20 h-28"
+                            key={index}
+                            src={getCardPath(card)}
+                            width={0} height={0}
+                            alt={`Community card ${index+1}`} />
+                        )
+                    }
+                </div>
+            </Table>
+        )
+    }
+
+    return(
+        <div className="fixed flex flex-col justify-center items-center w-dvw h-dvh gap-3">
+            { gameStarted
+            ? <span className="text-6xl p-5">00:00</span>
+            : getGameOptionsMenu()
             }
 
-            <Table>
-                {items}
-            </Table>
+            {getRenderedTable()}
             
             { gameStarted
             ?   <div className="flex flex-row flex-wrap justify-center items-center gap-2">

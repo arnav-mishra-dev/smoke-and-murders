@@ -36,7 +36,7 @@ export default function InputField({ onChange, integral, value } : { onChange? :
         <div className='flex flex-col relative justify-center items-end'>
             <Image
             className="w-10 h-10 p-1 absolute"
-            src="/edit-icon.svg"
+            src="/ui/edit-icon.svg"
             width={0}
             height={0}
             alt="Edit icon"
