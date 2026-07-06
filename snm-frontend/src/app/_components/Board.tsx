@@ -274,7 +274,7 @@ export default function Board()
                     {
                         communityCards.map((card, index) =>
                             <Image
-                            className="w-20 h-28"
+                            className="w-20 h-28 -m-7"
                             key={index}
                             src={getCardPath(card)}
                             width={0} height={0}
