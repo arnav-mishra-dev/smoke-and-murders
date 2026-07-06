@@ -118,10 +118,11 @@ public class RoomManager
                             case "vote":
                             {
                                 var playerData = _rooms[roomCode].GameManager.GetPlayerData(uid);
-                                if (_rooms[roomCode].GameManager.IsNightfall || playerData.Jailed) break;
+                                if (_rooms[roomCode].GameManager.IsNightfall) break;
                                 
                                 if (_actions.All(p => p.uid != uid))
-                                    if (playerData.Role is Role.Mayor)
+                                {
+                                    if (playerData.Role is Role.Mayor && !playerData.Jailed)
                                     {
                                         _actions.Enqueue((uid, transferData));
                                         _actions.Enqueue((uid, transferData));
@@ -130,6 +131,7 @@ public class RoomManager
                                     {
                                         _actions.Enqueue((uid, transferData));
                                     }
+                                }
                                 break;
                             }
                         }

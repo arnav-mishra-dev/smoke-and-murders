@@ -124,12 +124,13 @@ public class GameManager
         foreach (string pid in _players.Keys)
         {
             _players[pid].Role = GetRoleFromHand(_players[pid].Hand);
-            if (_players[pid].IsMafia ||
-                _players[pid].Role is
+            if (_players[pid].IsMafia
+            || _players[pid].Role is
                     Role.Doctor or
                     Role.Detective or
                     Role.Jailer or
-                    Role.Vigilante)
+                    Role.Vigilante
+            && !_players[pid].Jailed)
             {
                 Console.WriteLine(_players[pid].Name);
                 turnTakers++;
