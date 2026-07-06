@@ -186,7 +186,7 @@ public class RoomManager
     {
         // Initialize game
         _rooms[roomCode].GameManager.InitializeGame(gameSettings);
-        await BroadcastAsync(roomCode, JsonSerializer.Serialize(new { Type = "start-game", Payload = "" }));
+        await BroadcastAsync(roomCode, JsonSerializer.Serialize(new { Type = "start-game" }));
         
         // Tell each player whether they're a mafia
         List<Task> mafiaStateMessages = new();
@@ -243,10 +243,10 @@ public class RoomManager
             await Task.WhenAll(roleMessages);
 
             // Nightfall
-            Dictionary<Role, List<string>> roleActions = new Dictionary<Role, List<string>>();
-            List<string> mafiaTargets = new List<string>();
+            Dictionary<Role, HashSet<string>> roleActions = new Dictionary<Role, HashSet<string>>();
+            HashSet<string> mafiaTargets = new HashSet<string>();
             foreach (Role role in Enum.GetValues(typeof(Role)))
-                roleActions.Add(role, new List<string>());
+                roleActions.Add(role, new HashSet<string>());
 
             _actions.Clear();
             int turnCountdown = gameSettings.TurnPlayTime;
@@ -262,6 +262,7 @@ public class RoomManager
                     JsonSerializer.Serialize(new { Type = "time", Payload = turnCountdown }));
             }
             
+            List<Task> jailedPlayerMessages = new List<Task>();
             while (_actions.TryDequeue(out var action))
             {
                 if (action.data.Type == "target")
@@ -281,6 +282,12 @@ public class RoomManager
                         {
                             Role targeterRole = playerData.Role;
                             roleActions[targeterRole].Add(targetUid);
+
+                            if (targeterRole == Role.Jailer)
+                            {
+                                var jailedMessage = new { Type = "jailed" };
+                                jailedPlayerMessages.Add(SendMessageToConnectionAsync(_rooms[roomCode].Connections[action.uid], JsonSerializer.Serialize(jailedMessage)));
+                            }
                         }
                     }
                     catch (Exception e)
@@ -299,6 +306,8 @@ public class RoomManager
             
             await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerStatusUpdates));
             Console.WriteLine("Broadcasted night deaths");
+
+            await Task.WhenAll(jailedPlayerMessages);
 
             // Daytime
             Dictionary<string, int> votes = new Dictionary<string, int>();
@@ -359,8 +368,7 @@ public class RoomManager
             
             var endRoundMessage = new
             {
-                Type = "round-over",
-                Payload = ""
+                Type = "round-over"
             };
             await BroadcastAsync(roomCode, JsonSerializer.Serialize(endRoundMessage));
         }

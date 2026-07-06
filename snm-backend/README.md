@@ -81,17 +81,18 @@ The following stages repeat until either the mafia count is less than a quarter 
 executed.
 
 1. "Type": "community-cards" with a Payload of an array of cards is broadcasted to all players. This value is empty in the first round.
-3. Every player receives a "role-message" with the payload having an integral Role value.
-4. Nightfall starts, and every second, every player receives a message of type "time" and with an integer of the remaining time left.
-5. During nightfall, each turn-taking player must send a message of type "target" and with the payload being the target's uid.
-6. Message type "death-updates" is broadcasted
+2. Every player receives a "role-message" with the payload having an integral Role value.
+3. Nightfall starts, and every second, every player receives a message of type "time" and with an integer of the remaining time left.
+4. During nightfall, each turn-taking player must send a message of type "target" and with the payload being the target's uid.
+5. Message type "death-updates" is broadcasted.
+6. Message type "jailed" is broadcasted to appropriate players.
 7. Daytime immediately begins, and the same time message type sends time remaining every second.
-7. Each living player must send a "vote" type message. The payload is the target uid. Mayor votes count for two and jailed player votes are not accepted. *the vote goes to skipping the voting round if the payload is "skip"*
-8. "death-updates" with the voted out player's uid as the only item is broadcasted as the payload if not skipped.
-9. Message type "round-over" with an empty string payload is broadcasted and the cycle repeats.
+8. Each living player must send a "vote" type message. The payload is the target uid. Mayor votes count for two and jailed player votes are not accepted. *the vote goes to skipping the voting round if the payload is "skip"*
+9. "death-updates" with the voted out player's uid as the only item is broadcasted as the payload if not skipped.
+10. Message type "round-over" with an empty string payload is broadcasted and the cycle repeats.
 
 A "game-over" message is broadcasted. The "Payload" has two keys:
 * "Winner" with value "civilians" or "mafias"
-* "WinnerList" containing a list of key-values in the form "[uid]": "[name]"
+* "WinnerList" containing a list of key-values in the form `[uid]: [name]`
 
 The game can then be restarted by sending another "game-settings" message.

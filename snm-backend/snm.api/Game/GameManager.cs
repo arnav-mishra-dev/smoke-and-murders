@@ -147,7 +147,7 @@ public class GameManager
 
     // Progress to the next level and handle current level
     // Returns updated game information
-    public string[] UpdatePlayerActions(List<string> mafiaTargets, Dictionary<Role, List<string>> civTargets)
+    public string[] UpdatePlayerActions(HashSet<string> mafiaTargets, Dictionary<Role, HashSet<string>> civTargets)
     {
         Dictionary<string, bool> deathUpdates = new Dictionary<string, bool>();
 
