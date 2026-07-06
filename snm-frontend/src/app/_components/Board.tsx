@@ -132,6 +132,7 @@ export default function Board()
 
     const [communityCards, SetCommunityCards] = useState<Card[]>([]);
     const [playerHand, SetPlayerHand] = useState<Card[]>([]);
+    const [time, SetTime] = useState<string>("00:00");
 
     const [settingsVisible, SetSettingsVisible] = useState<boolean>(false);
     const [MafiaCount, SetMafiaCount] = useState<number>(1);
@@ -159,11 +160,30 @@ export default function Board()
             case "start-game":
                 SetGameStarted(true);
                 break;
+            case "mafia-state":
+                break;
             case "card-hand":
                 SetPlayerHand(parsedData.Payload);
                 break;
             case "community-cards":
                 SetCommunityCards(parsedData.Payload);
+                break;
+            case "role-message":
+                break;
+            case "time":
+            {
+                const totalTime: number = parsedData.Payload;
+                const minutes: number = Math.floor(totalTime/60);
+                const seconds: number = totalTime - (minutes*60);
+
+                SetTime(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+                break;
+            }
+            case "death-updates":
+                break;
+            case "round-over":
+                break;
+            case "game-over":
                 break;
         }
     });
@@ -279,6 +299,7 @@ export default function Board()
             <Table className="pointer-events-none">
                 {
                 Object.keys(players).map((uid, index) =>
+                    !(uid == selfUID) &&
                     <OtherPlayerHand
                     isSelected={uid==selectedUID}
                     key={uid}
@@ -305,7 +326,7 @@ export default function Board()
     return(
         <div className="fixed flex flex-col justify-center items-center w-dvw h-dvh gap-3">
             { gameStarted
-            ? <span className="text-6xl p-5">00:00</span>
+            ? <span className="text-6xl p-5">{time}</span>
             : getGameOptionsMenu()
             }
 
