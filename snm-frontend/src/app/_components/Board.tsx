@@ -186,6 +186,8 @@ export default function Board()
                 SetDeadPlayers(new Set<string>(...deathUpdates, ...deadPlayers))
                 break;
             }
+            case "jailed":
+                break;
             case "round-over":
                 break;
             case "game-over":
