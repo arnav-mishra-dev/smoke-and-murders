@@ -106,8 +106,12 @@ public class RoomManager
                                 if (playerData.Role is Role.Doctor or Role.Detective or Role.Jailer or Role.Vigilante
                                     && _rooms[roomCode].GameManager.IsNightfall
                                     && !playerData.Jailed)
+                                {
                                     if (_actions.All(p => p.uid != uid))
+                                    {
                                         _actions.Enqueue((uid, transferData));
+                                    }
+                                }
                                 break;
                             }
 

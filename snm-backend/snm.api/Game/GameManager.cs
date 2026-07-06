@@ -146,37 +146,44 @@ public class GameManager
 
     // Progress to the next level and handle current level
     // Returns updated game information
-    public Dictionary<string, bool> UpdatePlayerActions(List<string> mafiaTargets, Dictionary<Role, List<string>> civTargets)
+    public string[] UpdatePlayerActions(List<string> mafiaTargets, Dictionary<Role, List<string>> civTargets)
     {
         Dictionary<string, bool> deathUpdates = new Dictionary<string, bool>();
 
         foreach (string playerUid in _players.Keys) // Free jailed players so they can perform actions on the next turn
+        {
             _players[playerUid].Jailed = false;
+        }
         
         foreach (string pid in civTargets[Role.Vigilante])
         {
             _players[pid].Living = false;
-            deathUpdates.Add(pid, false);
+            deathUpdates.TryAdd(pid, true);
         }
 
         foreach (string target in mafiaTargets)
         {
             _players[target].Living = false;
-            deathUpdates.Add(target, false);
+            deathUpdates.TryAdd(target, true);
         }
-        
-        foreach (string pid in civTargets[Role.Jailer])
-            _players[pid].Jailed = true;
         
         foreach (string pid in civTargets[Role.Doctor])
         {
             _players[pid].Living = true;
-            deathUpdates.Add(pid, true);
+            if (!deathUpdates.TryAdd(pid, false))
+            {
+                deathUpdates[pid] = false;
+            }
+        }
+        
+        foreach (string pid in civTargets[Role.Jailer])
+        {
+            _players[pid].Jailed = true;
         }
 
         IsNightfall = false;
         
-        return deathUpdates;
+        return deathUpdates.Keys.Where(key => deathUpdates[key]).ToArray();
     }
 
     // Returns player role based on 2 card hand passed to it and community cards member
