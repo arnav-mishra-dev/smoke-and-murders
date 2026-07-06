@@ -38,7 +38,7 @@ function getCardPath(card: Card)
     return `/cards/${name}.svg`;
 }
 
-export function SelfHand({cards} : {cards: Card[]})
+function SelfHand({cards} : {cards: Card[]})
 {
     if (cards.length === 0) return null;
 
@@ -62,8 +62,9 @@ export function SelfHand({cards} : {cards: Card[]})
     );
 }
 
-export function OtherPlayerHand({ rotation, name } : {rotation: number, name: string})
+function OtherPlayerHand({ rotation, name, isSelected, SelectAction } : {rotation: number, name: string, isSelected: boolean, SelectAction: () => void})
 {
+    const selectionElementStyle = "absolute pointer-events-auto w-full h-full scale-150 "+(isSelected ? "opacity-100" : "opacity-0 hover:opacity-50");
     return(
         <div
         className="absolute flex justify-end w-11/12"
@@ -71,9 +72,10 @@ export function OtherPlayerHand({ rotation, name } : {rotation: number, name: st
             <div
             className="
             relative
+            group/selector
             flex items-center justify-center
             rotate-90
-            w-25 h-30">
+            w-25 h-25">
                 <Image
                 className="
                 absolute
@@ -90,10 +92,17 @@ export function OtherPlayerHand({ rotation, name } : {rotation: number, name: st
                 src="/cards/card_back.svg"
                 width={0} height={0}
                 alt="Face down card" />
+
+                <Image
+                className={selectionElementStyle}
+                onClick={SelectAction}
+                width={0} height={0}
+                src="/player-selection-icon.svg"
+                alt="Selection icon" />
             </div>
 
             <div
-            style={{position: 'fixed', translate: "2rem 0", rotate: `${-rotation}deg`}}>
+            style={{position: 'absolute', translate: "2rem 0", rotate: `${-rotation}deg`}}>
                 <span className="text-2xl/10 p-2 h-10 rounded-xl bg-gray-900/95">{name}</span>
             </div>
         </div>
@@ -114,6 +123,8 @@ export default function Board()
 
     const [selfUID, SetUID] = useState<string>("");
     const [hostUID, SetHostUID] = useState<string>("");
+    const [selectedUID, SelectPlayer] = useState<string>("");
+
     const [players, SetPlayersValue] = useState<PlayerData>({});
     const [gameStarted, SetGameStarted] = useState<boolean>(false);
     const wsRef = useRef<WebSocket | null>(null);
@@ -265,10 +276,15 @@ export default function Board()
         const angleOffset: number = (320/Object.keys(players).length);
 
         return(
-            <Table>
+            <Table className="pointer-events-none">
                 {
-                Object.values(players).map((name, index) =>
-                <OtherPlayerHand key={index} name={name} rotation={(angleOffset/2)+110+index*angleOffset} />)
+                Object.keys(players).map((uid, index) =>
+                    <OtherPlayerHand
+                    isSelected={uid==selectedUID}
+                    key={uid}
+                    SelectAction={() => gameStarted && SelectPlayer(uid)}
+                    name={players[uid]}
+                    rotation={(angleOffset/2)+110+index*angleOffset} />)
                 }
                 <div className="absolute w-full h-full flex flex-row items-center justify-center">
                     {
