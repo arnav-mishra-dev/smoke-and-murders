@@ -130,6 +130,7 @@ export default function Board()
     const wsRef = useRef<WebSocket | null>(null);
     const roomCodeRef = useRef<string>(roomCode);
 
+    const [deadPlayers, SetDeadPlayers] = useState<Set<string>>(new Set<string>([]));
     const [communityCards, SetCommunityCards] = useState<Card[]>([]);
     const [playerHand, SetPlayerHand] = useState<Card[]>([]);
     const [time, SetTime] = useState<string>("00:00");
@@ -180,7 +181,11 @@ export default function Board()
                 break;
             }
             case "death-updates":
+            {
+                const deathUpdates = parsedData.Payload;
+                SetDeadPlayers(new Set<string>(...deathUpdates, ...deadPlayers))
                 break;
+            }
             case "round-over":
                 break;
             case "game-over":
