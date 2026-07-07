@@ -9,7 +9,7 @@ import PopupMenu from "./PopupMenu";
 import InputField from "./InputField";
 import MenuButton from "./MenuButton";
 
-export const Table = styled.div`
+export const TableContainer = styled.div`
     position: relative;
     display: flex;
     background-image: url(/centre_table.svg);
@@ -75,11 +75,11 @@ function OtherPlayerHand({ rotation, name, isSelected, SelectAction } : {rotatio
             group/selector
             flex items-center justify-center
             rotate-90
-            w-25 h-25">
+            w-20 h-20">
                 <Image
                 className="
                 absolute
-                w-20 h-30
+                w-17.5 h-24.5
                 -translate-x-1.5 rotate-6"
                 src="/cards/card_back.svg"
                 width={0} height={0}
@@ -87,7 +87,7 @@ function OtherPlayerHand({ rotation, name, isSelected, SelectAction } : {rotatio
                 <Image
                 className="
                 absolute
-                w-20 h-28
+                w-17.5 h-24.5
                 translate-x-1.5 -rotate-6"
                 src="/cards/card_back.svg"
                 width={0} height={0}
@@ -322,27 +322,31 @@ export default function Board()
 
     function getRenderedTable()
     {
-        const angleOffset: number = (320/Object.keys(players).length);
-
+        const playerCount: number = Object.keys(players).length-1;
+        const angleCovered: number = 320/playerCount;
+        let currentIndex: number = -1;
         return(
-            <Table className="pointer-events-none">
-                {
-                Object.keys(players).map((uid, index) =>
-                    !(uid == selfUID) &&
-                    <OtherPlayerHand
-                    isSelected={uid==selectedUID}
-                    key={uid}
-                    SelectAction={() => {
-                        if (gameStarted)
-                        {
-                            return isNightfall
-                            ? currentRole != Role.None && currentRole != Role.Mayor && SelectPlayer(uid)
-                            : SelectPlayer(uid);
-                        }
-                    }}
-                    name={players[uid]}
-                    rotation={(angleOffset/2)+110+index*angleOffset} />)
-                }
+            <TableContainer className="pointer-events-none">
+                { Object.keys(players).map((uid) => {
+                    if (uid == selfUID) return;
+                    currentIndex++;
+                    return(
+                        <OtherPlayerHand
+                        isSelected={uid==selectedUID}
+                        key={uid}
+                        SelectAction={() => {
+                            if (gameStarted)
+                            {
+                                return isNightfall
+                                ? currentRole != Role.None && currentRole != Role.Mayor && SelectPlayer(uid)
+                                : SelectPlayer(uid);
+                            }
+                        }}
+                        name={players[uid]}
+                        rotation={90+20+(angleCovered*currentIndex)+(angleCovered/2)} />
+                    );
+                })}
+
                 <div className="absolute w-full h-full flex flex-row items-center justify-center">
                     {
                         communityCards.map((card, index) =>
@@ -354,8 +358,9 @@ export default function Board()
                             alt={`Community card ${index+1}`} />
                         )
                     }
+                    {selectedUID && <Button className="absolute m-auto">Confirm</Button>}
                 </div>
-            </Table>
+            </TableContainer>
         )
     }
 
@@ -393,7 +398,6 @@ export default function Board()
             }
 
             {getRenderedTable()}
-            {selectedUID && <Button>Confirm</Button>}
             
             { gameStarted
             ? getHandAndRole()
