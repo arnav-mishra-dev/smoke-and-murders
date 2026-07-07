@@ -72,6 +72,7 @@ public class RoomManager
                         switch (transferData.Type)
                         {
                             case "game-settings":
+                            {
                                 GameSettingsDto? gameSettings = transferData.Payload.Deserialize<GameSettingsDto>();
                                 Console.WriteLine("Deserialized game settings");
                                 Console.WriteLine(gameSettings);
@@ -91,22 +92,28 @@ public class RoomManager
                                         Console.WriteLine("Invalid game settings");
                                     }
                                 }
+
                                 break;
+                            }
                             
                             case "message":
+                            {
                                 if (_rooms[roomCode].GameManager.IsNightfall) break;
                                 if (!string.IsNullOrWhiteSpace(transferData.Payload.GetString()))
                                     _ = BroadcastAsync(roomCode, JsonSerializer.Serialize(transferData));
                                 break;
+                            }
 
                             // Apparently you can give each case its own scope with curly braces
                             case "target":
                             {
+                                Console.WriteLine($"Received target: {transferData.Payload.GetString()}");
                                 var playerData = _rooms[roomCode].GameManager.GetPlayerData(uid);
-                                if (playerData.Role is Role.Doctor or Role.Detective or Role.Jailer or Role.Vigilante
+                                if ((playerData.Role is Role.Doctor or Role.Detective or Role.Jailer or Role.Vigilante || playerData.IsMafia)
                                     && _rooms[roomCode].GameManager.IsNightfall
                                     && !playerData.Jailed)
                                 {
+                                    Console.WriteLine(transferData.Payload);
                                     if (_actions.All(p => p.uid != uid))
                                     {
                                         _actions.Enqueue((uid, transferData));
@@ -117,6 +124,7 @@ public class RoomManager
 
                             case "vote":
                             {
+                                Console.WriteLine($"Received vote: {transferData.Payload.GetString()}");
                                 var playerData = _rooms[roomCode].GameManager.GetPlayerData(uid);
                                 if (_rooms[roomCode].GameManager.IsNightfall) break;
                                 
@@ -271,7 +279,7 @@ public class RoomManager
                         var playerData = _rooms[roomCode].GameManager.GetPlayerData(action.uid);
                         if (!playerData.Living) break;
                         
-                        string? targetUid = action.data.Payload.Deserialize<string>();
+                        string? targetUid = action.data.Payload.GetString();
                         if (targetUid is null) break;
                         if (playerData.IsMafia)
                         {
@@ -312,7 +320,7 @@ public class RoomManager
 
             // Daytime
             Dictionary<string, int> votes = new Dictionary<string, int>();
-            foreach (string playerId in _rooms[roomCode].GameManager.GetPlayers().Keys)
+            foreach (string playerId in _rooms[roomCode].GameManager.GetPlayers().Keys.Where(k => _rooms[roomCode].GameManager.GetPlayerData(k).Living))
                 votes.Add(playerId, 0);
             votes.Add("skip", 0);
 
@@ -333,13 +341,18 @@ public class RoomManager
             
             while (_actions.TryDequeue(out var action))
             {
-                string? voteUid = action.data.Payload.Deserialize<string>();
+                string? voteUid = action.data.Payload.GetString();
                 if (voteUid is null) continue;
+                
                 if (action.data.Type == "vote")
-                    if ((votes.ContainsKey(voteUid) && _rooms[roomCode].GameManager.GetPlayerData(voteUid).Living)
-                        || voteUid == "skip")
+                {
+                    if (votes.ContainsKey(voteUid) || voteUid == "skip")
+                    {
                         votes[voteUid]++;
+                    }
+                }
             }
+            Console.WriteLine("Votes processed");
 
             int tiedGreatest = 0;
             int largestVote = 0;
@@ -355,6 +368,7 @@ public class RoomManager
                     tiedGreatest = 0;
                 }
             }
+            Console.WriteLine($"Votes evaluated. Result - {greatestValue}");
 
             if (greatestValue != "skip" && tiedGreatest == 0 && largestVote > 0 && greatestValue != null)
             {
@@ -368,6 +382,7 @@ public class RoomManager
                 await BroadcastAsync(roomCode, JsonSerializer.Serialize(voteUpdate));
                 Console.WriteLine($"Voted out {votedPlayer[0]}");
             }
+            Console.WriteLine("Voting applied and broadcasted");
             
             var endRoundMessage = new
             {
@@ -390,6 +405,8 @@ public class RoomManager
         };
         await BroadcastAsync(roomCode, JsonSerializer.Serialize(endGameMessage));
         _rooms[roomCode].GameManager.ResetGameState();
+        
+        Console.WriteLine($"Game over. {endGameMessage.Payload.Winner} win.");
     }
     
     private string GetOwnerId(string roomId)
