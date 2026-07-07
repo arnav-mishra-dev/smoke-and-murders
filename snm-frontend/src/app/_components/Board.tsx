@@ -3,7 +3,7 @@ import styled from "styled-components";
 import Image from "next/image";
 import { use, useEffect, useEffectEvent, useRef, useState } from "react";
 import { ConnectionContext } from "@/lib/context";
-import { Card, CardSuit, CardValue, Page, PlayerData } from "@/lib/types";
+import { Card, CardSuit, CardValue, Page, PlayerData, Role } from "@/lib/types";
 import Button from "./Button";
 import PopupMenu from "./PopupMenu";
 import InputField from "./InputField";
@@ -133,7 +133,10 @@ export default function Board()
     const [deadPlayers, SetDeadPlayers] = useState<Set<string>>(new Set<string>([]));
     const [communityCards, SetCommunityCards] = useState<Card[]>([]);
     const [playerHand, SetPlayerHand] = useState<Card[]>([]);
-    const [time, SetTime] = useState<string>("00:00");
+    const [currentRole, SetRole] = useState<Role>(Role.None);
+    const [time, SetTime] = useState<string>("0:00");
+    const [isDead, SetDeathState] = useState<boolean>(false);
+    const [isJailed, SetJailedState] = useState<boolean>(false);
 
     const [settingsVisible, SetSettingsVisible] = useState<boolean>(false);
     const [MafiaCount, SetMafiaCount] = useState<number>(1);
@@ -170,6 +173,7 @@ export default function Board()
                 SetCommunityCards(parsedData.Payload);
                 break;
             case "role-message":
+                SetRole(parsedData.Payload as Role);
                 break;
             case "time":
             {
@@ -184,13 +188,25 @@ export default function Board()
             {
                 const deathUpdates = parsedData.Payload;
                 SetDeadPlayers(new Set<string>(...deathUpdates, ...deadPlayers))
+                if (selfUID in deadPlayers) SetDeathState(true);
+
+                SetJailedState(false);
                 break;
             }
             case "jailed":
+                SetJailedState(true);
                 break;
             case "round-over":
                 break;
             case "game-over":
+                SetGameStarted(false);
+                SetDeadPlayers(new Set<string>([]));
+                SetCommunityCards([]);
+                SetPlayerHand([]);
+                SetRole(Role.None);
+                SetTime("0:00");
+                SetDeathState(false);
+                SetJailedState(false);
                 break;
         }
     });
@@ -344,7 +360,7 @@ export default function Board()
                     <SelfHand cards={playerHand} />
                     <div className="py-5 px-3 text-6xl rounded-xl bg-black/10">
                         <span>Role: </span>
-                        <span className="border-2 border-white rounded-2xl p-2">None</span>
+                        <span className="border-2 border-white rounded-2xl p-2">{Role[currentRole]}</span>
                     </div>
                 </div>
             :   <div className="flex flex-col w-dvw items-center gap-15">

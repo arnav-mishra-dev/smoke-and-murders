@@ -23,6 +23,16 @@ export enum CardValue
     King = 13,
 }
 
+export enum Role
+{
+    None = 0,
+    Doctor = 1,
+    Detective = 2,
+    Mayor = 3,
+    Jailer = 4,
+    Vigilante = 5
+}
+
 export interface Card
 {
     Suit: CardSuit,
