@@ -218,8 +218,7 @@ public class RoomManager
         
         while (true)
         {
-            if (_rooms[roomCode].GameManager.LivingMafiaCount() > _rooms[roomCode].GameManager.LivingPlayerCount() / 4
-                || _rooms[roomCode].GameManager.LivingMafiaCount() == 0) break;
+            if (_rooms[roomCode].GameManager.LivingMafiaCount() == 0) break;
             
             // Deal nighttime cards
             _rooms[roomCode].GameManager.DealNightCards();
@@ -306,6 +305,8 @@ public class RoomManager
             
             await BroadcastAsync(roomCode, JsonSerializer.Serialize(playerStatusUpdates));
             Console.WriteLine("Broadcasted night deaths");
+
+            if (_rooms[roomCode].GameManager.LivingMafiaCount() > _rooms[roomCode].GameManager.LivingPlayerCount() / 4) break;
 
             await Task.WhenAll(jailedPlayerMessages);
 
