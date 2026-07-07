@@ -130,6 +130,7 @@ export default function Board()
     const wsRef = useRef<WebSocket | null>(null);
     const roomCodeRef = useRef<string>(roomCode);
 
+    const [isNightfall, SetNightfallState] = useState<boolean>(true);
     const [deadPlayers, SetDeadPlayers] = useState<Set<string>>(new Set<string>([]));
     const [communityCards, SetCommunityCards] = useState<Card[]>([]);
     const [playerHand, SetPlayerHand] = useState<Card[]>([]);
@@ -190,13 +191,17 @@ export default function Board()
                 SetDeadPlayers(new Set<string>(...deathUpdates, ...deadPlayers))
                 if (selfUID in deadPlayers) SetDeathState(true);
 
+                SetNightfallState(false);
                 SetJailedState(false);
+                SelectPlayer("");
                 break;
             }
             case "jailed":
                 SetJailedState(true);
                 break;
             case "round-over":
+                SelectPlayer("");
+                SetNightfallState(true);
                 break;
             case "game-over":
                 SetGameStarted(false);
@@ -207,6 +212,7 @@ export default function Board()
                 SetTime("0:00");
                 SetDeathState(false);
                 SetJailedState(false);
+                SetNightfallState(true);
                 break;
         }
     });
@@ -326,7 +332,14 @@ export default function Board()
                     <OtherPlayerHand
                     isSelected={uid==selectedUID}
                     key={uid}
-                    SelectAction={() => gameStarted && SelectPlayer(uid)}
+                    SelectAction={() => {
+                        if (gameStarted)
+                        {
+                            return isNightfall
+                            ? currentRole != Role.None && currentRole != Role.Mayor && SelectPlayer(uid)
+                            : SelectPlayer(uid);
+                        }
+                    }}
                     name={players[uid]}
                     rotation={(angleOffset/2)+110+index*angleOffset} />)
                 }
@@ -346,6 +359,32 @@ export default function Board()
         )
     }
 
+    function getHandAndRole()
+    {
+        return(
+            <div className="flex flex-row flex-wrap justify-center items-center gap-2">
+                <SelfHand cards={playerHand} />
+                <div className="py-5 px-3 text-6xl rounded-xl bg-black/10">
+                    <span>Role: </span>
+                    <span className="border-2 border-white rounded-2xl p-2">{Role[currentRole]}</span>
+                </div>
+            </div>
+        )
+    }
+
+    function getStartingInfo()
+    {
+        return(
+            <div className="flex flex-col w-dvw items-center gap-15">
+                <div className="text-5xl">Room code: <span className="leading-none p-3 rounded-xl bg-black/10">{roomCode}</span></div>
+                { selfUID === hostUID
+                ? <Button onClick={() => sendStartMessage({MafiaCount, TurnPlayTime, VoteTime})}>Start Game</Button>
+                : <span className="text-xl">Waiting for host to start the game...</span>
+                }
+            </div>
+        );
+    }
+
     return(
         <div className="fixed flex flex-col justify-center items-center w-dvw h-dvh gap-3">
             { gameStarted
@@ -354,23 +393,12 @@ export default function Board()
             }
 
             {getRenderedTable()}
+            {selectedUID && <Button>Confirm</Button>}
             
             { gameStarted
-            ?   <div className="flex flex-row flex-wrap justify-center items-center gap-2">
-                    <SelfHand cards={playerHand} />
-                    <div className="py-5 px-3 text-6xl rounded-xl bg-black/10">
-                        <span>Role: </span>
-                        <span className="border-2 border-white rounded-2xl p-2">{Role[currentRole]}</span>
-                    </div>
-                </div>
-            :   <div className="flex flex-col w-dvw items-center gap-15">
-                    <div className="text-5xl">Room code: <span className="leading-none p-3 rounded-xl bg-black/10">{context.roomCode}</span></div>
-                    {
-                    selfUID === hostUID
-                    ? <Button onClick={() => sendStartMessage({MafiaCount, TurnPlayTime, VoteTime})}>Start Game</Button>
-                    : <span className="text-xl">Waiting for host to start the game...</span>
-                    }
-                </div> }
+            ? getHandAndRole()
+            : getStartingInfo()
+            }
         </div>
     );
 }
