@@ -21,6 +21,7 @@ export const TableContainer = styled.div`
     width: 30rem;
     height: 30rem;
     aspect-ratio: 1/1;
+    transform: translateZ(-1px);
 `
 
 export const Hand = styled.div`
@@ -64,7 +65,7 @@ function SelfHand({cards} : {cards: Card[]})
 
 function OtherPlayerHand({ rotation, name, isSelected, SelectAction } : {rotation: number, name: string, isSelected: boolean, SelectAction: () => void})
 {
-    const selectionElementStyle = "absolute pointer-events-auto w-full h-full scale-150 "+(isSelected ? "opacity-100" : "opacity-0 hover:opacity-50");
+    const selectionElementStyle = "absolute pointer-events-auto w-20 h-20 scale-150 "+(isSelected ? "opacity-100" : "opacity-0 hover:opacity-50");
     return(
         <div
         className="absolute flex justify-end w-11/12"
@@ -75,7 +76,7 @@ function OtherPlayerHand({ rotation, name, isSelected, SelectAction } : {rotatio
             group/selector
             flex items-center justify-center
             rotate-90
-            w-20 h-20">
+            w-25 h-25">
                 <Image
                 className="
                 absolute
@@ -130,6 +131,7 @@ export default function Board()
     const wsRef = useRef<WebSocket | null>(null);
     const roomCodeRef = useRef<string>(roomCode);
 
+    const [isMafia, SetMafiaState] = useState<boolean>(false);
     const [isNightfall, SetNightfallState] = useState<boolean>(true);
     const [deadPlayers, SetDeadPlayers] = useState<Set<string>>(new Set<string>([]));
     const [communityCards, SetCommunityCards] = useState<Card[]>([]);
@@ -166,6 +168,7 @@ export default function Board()
                 SetGameStarted(true);
                 break;
             case "mafia-state":
+                SetMafiaState(parsedData.Payload);
                 break;
             case "card-hand":
                 SetPlayerHand(parsedData.Payload);
@@ -204,6 +207,7 @@ export default function Board()
                 SetNightfallState(true);
                 break;
             case "game-over":
+                SetMafiaState(false);
                 SetGameStarted(false);
                 SetDeadPlayers(new Set<string>([]));
                 SetCommunityCards([]);
@@ -279,7 +283,18 @@ export default function Board()
                 Payload: message
             }
         ));
-        console.log("sent message");
+        console.log("Sent game start message");
+    }
+
+    function sendSelectedPlayer()
+    {
+        wsRef.current?.send(JSON.stringify(
+            {
+                Type: isNightfall ? "target" : "vote",
+                Payload: selectedUID
+            }
+        ));
+        console.log(isNightfall ? "Sent targeting message" : "Sent vote");
     }
 
     function getGameOptionsMenu()
@@ -325,6 +340,10 @@ export default function Board()
         const playerCount: number = Object.keys(players).length-1;
         const angleCovered: number = 320/playerCount;
         let currentIndex: number = -1;
+
+        const selectionElementStyle = "absolute pointer-events-auto w-20 h-20 scale-150 "
+        +(selectedUID=="skip" ? "opacity-100" : "opacity-0 hover:opacity-50");
+
         return(
             <TableContainer className="pointer-events-none">
                 { Object.keys(players).map((uid) => {
@@ -338,7 +357,7 @@ export default function Board()
                             if (gameStarted)
                             {
                                 return isNightfall
-                                ? currentRole != Role.None && currentRole != Role.Mayor && SelectPlayer(uid)
+                                ? ((currentRole != Role.None && currentRole != Role.Mayor) || isMafia) && SelectPlayer(uid)
                                 : SelectPlayer(uid);
                             }
                         }}
@@ -348,18 +367,51 @@ export default function Board()
                 })}
 
                 <div className="absolute w-full h-full flex flex-row items-center justify-center">
-                    {
-                        communityCards.map((card, index) =>
-                            <Image
-                            className="w-20 h-28 -m-7"
-                            key={index}
-                            src={getCardPath(card)}
-                            width={0} height={0}
-                            alt={`Community card ${index+1}`} />
-                        )
-                    }
-                    {selectedUID && <Button className="absolute m-auto">Confirm</Button>}
+                    {communityCards.map((card, index) =>
+                        <Image
+                        className="w-20 h-28 -m-7"
+                        key={index}
+                        src={getCardPath(card)}
+                        width={0} height={0}
+                        alt={`Community card ${index+1}`} />
+                    )}
                 </div>
+
+                {selectedUID &&
+                <div className="absolute w-full h-80 flex flex-col-reverse items-center">
+                    <Button
+                    style={{pointerEvents: "auto", padding: '0.8rem', fontSize: '2.2rem', border: '0.3rem solid rgba(0, 0, 0, 0.3)', backgroundClip: 'padding-box'}}
+                    onClick={sendSelectedPlayer}>
+                        Confirm
+                    </Button>
+                </div>
+                }
+
+                { selectedUID &&
+                <div className="absolute w-full h-80 flex flex-col-reverse items-center">
+                    <Button
+                    style={{pointerEvents: "auto", padding: '0.8rem', fontSize: '2.2rem', outline: '0.3rem solid rgba(0, 0, 0, 0.3)'}}
+                    onClick={sendSelectedPlayer}>
+                        Confirm
+                    </Button>
+                </div>
+                }
+                {gameStarted && !isNightfall &&
+                    <div className="absolute w-full h-130 flex flex-col-reverse items-center">
+                        <span className="
+                        rounded-full
+                        text-4xl
+                        outline-[0.4rem]
+                        outline-black
+                        p-3 bg-[#191919]">Skip</span>
+                        <Image
+                        className={selectionElementStyle}
+                        onClick={() => SelectPlayer("skip")}
+                        width={0} height={0}
+                        src="/player-selection-icon.svg"
+                        alt="Selection icon" />
+                    </div>
+                }
             </TableContainer>
         )
     }
@@ -391,7 +443,7 @@ export default function Board()
     }
 
     return(
-        <div className="fixed flex flex-col justify-center items-center w-dvw h-dvh gap-3">
+        <div className="flex flex-col justify-center items-center w-dvw h-dvh gap-3">
             { gameStarted
             ? <span className="text-6xl p-5">{time}</span>
             : getGameOptionsMenu()
