@@ -359,13 +359,14 @@ public class RoomManager
             if (greatestValue != "skip" && tiedGreatest == 0 && largestVote > 0 && greatestValue != null)
             {
                 _rooms[roomCode].GameManager.KillPlayer(greatestValue);
-                Dictionary<string, bool> votedPlayer = new() { { greatestValue, false } };
+                string[] votedPlayer = [greatestValue];
                 var voteUpdate = new
                 {
                     Type = "death-updates",
                     Payload = votedPlayer
                 };
                 await BroadcastAsync(roomCode, JsonSerializer.Serialize(voteUpdate));
+                Console.WriteLine($"Voted out {votedPlayer[0]}");
             }
             
             var endRoundMessage = new
@@ -373,6 +374,8 @@ public class RoomManager
                 Type = "round-over"
             };
             await BroadcastAsync(roomCode, JsonSerializer.Serialize(endRoundMessage));
+            
+            Console.WriteLine("Round complete");
         }
 
         bool civiliansWin = _rooms[roomCode].GameManager.LivingMafiaCount() == 0;
