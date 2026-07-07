@@ -132,7 +132,6 @@ public class GameManager
                     Role.Vigilante
             && !_players[pid].Jailed)
             {
-                Console.WriteLine(_players[pid].Name);
                 turnTakers++;
             }
         }

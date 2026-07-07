@@ -68,7 +68,7 @@ public class RoomManager
                         JsonSerializer.Deserialize<TransferDataDto>(Encoding.UTF8.GetString(receiveBuffer, 0, result.Count));
                     if (transferData != null)
                     {
-                        Console.WriteLine($"Sent message {transferData.Type}");
+                        Console.WriteLine($"Received message {transferData.Type}");
                         switch (transferData.Type)
                         {
                             case "game-settings":
@@ -326,14 +326,15 @@ public class RoomManager
                 await Task.Delay(1000);
                 voteCountdown--;
                 if (voteCountdown <= 0) break;
-                await BroadcastAsync(roomCode,
-                    JsonSerializer.Serialize(new { Type = "time", Payload = voteCountdown }));
+                await BroadcastAsync(roomCode, JsonSerializer.Serialize(new { Type = "time", Payload = voteCountdown }));
             }
+
+            Console.WriteLine("Voting complete");
             
             while (_actions.TryDequeue(out var action))
             {
                 string? voteUid = action.data.Payload.Deserialize<string>();
-                if (voteUid is null) break;
+                if (voteUid is null) continue;
                 if (action.data.Type == "vote")
                     if ((votes.ContainsKey(voteUid) && _rooms[roomCode].GameManager.GetPlayerData(voteUid).Living)
                         || voteUid == "skip")
@@ -395,7 +396,7 @@ public class RoomManager
         if (owner is null)
         {
             Console.WriteLine("Owner not found");
-            return  string.Empty;
+            return string.Empty;
         }
         
         return owner;
