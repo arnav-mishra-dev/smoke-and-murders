@@ -44,7 +44,7 @@ export default function InputField({ onChange, integral, value } : { onChange? :
             <StyledInput
             id='input-field'
             type="text"
-            maxLength={20}
+            maxLength={15}
             value={value}
             onChange={(e) => onChange?.(e.target.value)}
             {...(integral ? {type:"number", step:1, min:0} : {})}

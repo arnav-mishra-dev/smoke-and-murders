@@ -73,7 +73,6 @@ function OtherPlayerHand({ rotation, name, isSelected, SelectAction } : {rotatio
             <div
             className="
             relative
-            group/selector
             flex items-center justify-center
             rotate-90
             w-25 h-25">
@@ -93,18 +92,29 @@ function OtherPlayerHand({ rotation, name, isSelected, SelectAction } : {rotatio
                 src="/cards/card_back.svg"
                 width={0} height={0}
                 alt="Face down card" />
+            </div>
 
+            <div
+            style={{
+                position: 'absolute',
+                display: 'flex',
+                right: '-7rem',
+                rotate: `${-rotation}deg`,
+                flexDirection: 'column',
+                alignItems: 'center'
+            }}>
+                <span className="absolute -translate-y-10 flex text-2xl/10 justify-center items-center p-2 h-10 rounded-xl bg-gray-900/95">{name}</span>
+                <Image
+                className="w-25 h-25"
+                width={0} height={0}
+                src="/ui/profile-icon.svg"
+                alt="Profile icon" />
                 <Image
                 className={selectionElementStyle}
                 onClick={SelectAction}
                 width={0} height={0}
                 src="/player-selection-icon.svg"
                 alt="Selection icon" />
-            </div>
-
-            <div
-            style={{position: 'absolute', translate: "2rem 0", rotate: `${-rotation}deg`}}>
-                <span className="text-2xl/10 p-2 h-10 rounded-xl bg-gray-900/95">{name}</span>
             </div>
         </div>
     );
