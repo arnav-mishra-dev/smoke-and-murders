@@ -8,7 +8,7 @@ import PopupMenu from "./PopupMenu";
 import InputField from "./InputField";
 import styles from './mainmenu.module.css';
 
-export function UsernameSetter()
+function UsernameSetter()
 {
     const context = use(ConnectionContext);
 

@@ -1,7 +1,7 @@
 'use client'
 import styled from "styled-components";
 import Image from "next/image";
-import { use, useEffect, useEffectEvent, useRef, useState } from "react";
+import { JSX, use, useEffect, useEffectEvent, useRef, useState } from "react";
 import { ConnectionContext } from "@/lib/context";
 import { Card, CardSuit, CardValue, Page, PlayerData, Role } from "@/lib/types";
 import Button from "./Button";
@@ -155,6 +155,46 @@ function OtherPlayerHand({ rotation, name, isSelected, isDead, cardsDealt, Selec
     );
 }
 
+function WinnerScreen({ winners, deadPlayers, text, CloseAction } : { winners: PlayerData, deadPlayers: string[], text: string, CloseAction: () => void})
+{
+    return(
+        <div className="fixed flex w-dvw h-dvh flex-col justify-center items-center gap-20 bg-[#0f0f0f]">
+            <span className="text-9xl font-[misproject]">{text} win</span>
+            <div className="flex flex-row gap-10">
+                {Object.keys(winners).map((uid, key) => {
+                    return(
+                        <div className="flex flex-row items-center gap-30" key={key}>
+                            <div className="flex flex-col items-center text-5xl">
+                                <span className="p-2 rounded-xl bg-gray-900/95">{winners[uid]}</span>
+                                <Image
+                                className="w-50 h-50"
+                                width={0} height={0}
+                                src="/ui/profile-icon.svg"
+                                alt="Profile icon" />
+                            </div>
+                            { deadPlayers.includes(uid) &&
+                                <div className="
+                                absolute flex
+                                justify-center items-center
+                                w-50 h-50
+                                rounded-full
+                                [background:radial-gradient(#000000,#000000c1,#00000000,#00000000)]">
+                                    <Image
+                                    className="w-20 h-20"
+                                    width={0} height={0}
+                                    src="/game/death-icon.svg"
+                                    alt="Death icon" />
+                                </div>
+                            }
+                        </div>
+                    );
+                })}
+            </div>
+            <Button style={{position: "absolute", right: '2rem', bottom: '2rem'}} onClick={CloseAction}>Continue</Button>
+        </div>
+    );
+}
+
 interface GameSettings
 {
     MafiaCount: number,
@@ -191,6 +231,7 @@ export default function Board()
     const [MafiaCount, SetMafiaCount] = useState<number>(1);
     const [TurnPlayTime, SetTurnPlayTime] = useState<number>(30);
     const [VoteTime, SetVoteTime] = useState<number>(60);
+    const [winnerScreen, SetWinnerScreen] = useState<{winners: PlayerData, deadPlayers: string[], winnerVal: string} | null>(null);
 
     const onSocketMessage = useEffectEvent((event: MessageEvent) => {
         if (!SetRoomCode) return;
@@ -212,6 +253,7 @@ export default function Board()
                 break;
             case "start-game":
                 SetGameStarted(true);
+                SetWinnerScreen(null);
                 break;
             case "mafia-state":
                 SetMafiaState(parsedData.Payload);
@@ -255,11 +297,19 @@ export default function Board()
                 SetNightfallState(true);
                 break;
             case "game-over":
+                SetWinnerScreen({
+                    winners: parsedData.Payload.WinnerList,
+                    deadPlayers: [...deadPlayers],
+                    winnerVal: parsedData.Payload.Winner
+                });
+                console.log(parsedData.Payload.WinnerList);
+                console.log([...deadPlayers]);
+
                 SetMafiaState(false);
                 SetGameStarted(false);
-                SetDeadPlayers(new Set<string>([]));
                 SetCommunityCards([]);
                 SetPlayerHand([]);
+                SetDeadPlayers(new Set<string>([]))
                 SetRole(Role.None);
                 SetTime("0:00");
                 SetDeathState(false);
@@ -346,44 +396,37 @@ export default function Board()
         console.log(isNightfall ? "Sent targeting message" : "Sent vote");
     }
 
-    const canSelect = () => gameStarted && selectionPending && !isDead;
-
     function getGameOptionsMenu()
     {
-        if (selfUID == hostUID)
-        {
-            return (
-            <>
-                <MenuButton
-                className="top-3 right-3 lg:top-10 lg:left-10 "
-                onClick={() => SetSettingsVisible(true)}
-                $iconUrl="/ui/cogwheel.svg"
-                $imgSize={30} />
+        const playerCount = Object.keys(players).length;
+        const maxMafiaCount = playerCount<1 ? 1 : Math.floor(playerCount/4);
+        return (
+        <>
+            <MenuButton
+            className="top-3 right-3 lg:top-10 lg:left-10 "
+            onClick={() => SetSettingsVisible(true)}
+            $iconUrl="/ui/cogwheel.svg"
+            $imgSize={30} />
 
-                <PopupMenu
-                visible={settingsVisible}
-                closeAction={() => SetSettingsVisible(false)}
-                submitAction={() => SetSettingsVisible(false)}>
-                    <div>
-                        <span className="text-2xl">Mafia Count:</span>
-                        <InputField integral={true} value={MafiaCount.toString()} onChange={(value) => SetMafiaCount(parseInt(value))} />
-                    </div>
-                    <div>
-                        <span className="text-2xl">Nightfall duration:</span>
-                        <InputField integral={true} value={TurnPlayTime.toString()} onChange={(value) => SetTurnPlayTime(parseInt(value))} />
-                    </div>
-                    <div>
-                        <span className="text-2xl">Vote time:</span>
-                        <InputField integral={true} value={VoteTime.toString()} onChange={(value) => SetVoteTime(parseInt(value))} />
-                    </div>
-                </PopupMenu>
-            </>
-            );
-        }
-        else
-        {
-            return null;
-        }
+            <PopupMenu
+            visible={settingsVisible}
+            closeAction={() => SetSettingsVisible(false)}
+            submitAction={() => SetSettingsVisible(false)}>
+                <div>
+                    <span className="text-2xl">Mafia Count:</span>
+                    <InputField integral={true} maxVal={maxMafiaCount} value={MafiaCount.toString()} onChange={(value) => SetMafiaCount(parseInt(value))} />
+                </div>
+                <div>
+                    <span className="text-2xl">Nightfall duration:</span>
+                    <InputField integral={true} maxVal={600} value={TurnPlayTime.toString()} onChange={(value) => SetTurnPlayTime(parseInt(value))} />
+                </div>
+                <div>
+                    <span className="text-2xl">Vote time:</span>
+                    <InputField integral={true} maxVal={600} value={VoteTime.toString()} onChange={(value) => SetVoteTime(parseInt(value))} />
+                </div>
+            </PopupMenu>
+        </>
+        );
     }
 
     function getRenderedTable()
@@ -407,7 +450,7 @@ export default function Board()
                         isDead={deadPlayers.has(uid)}
                         key={uid}
                         SelectAction={() => {
-                            if (canSelect() && !isJailed && !deadPlayers.has(uid))
+                            if (gameStarted && selectionPending && !isDead && !isJailed && !deadPlayers.has(uid))
                             {
                                 return isNightfall
                                 ? ((currentRole != Role.None && currentRole != Role.Mayor) || isMafia) && SelectPlayer(uid)
@@ -443,7 +486,7 @@ export default function Board()
                     </Button>
                 </div>
                 }
-                {canSelect() && !isNightfall &&
+                {gameStarted && !isNightfall &&
                     <div className="absolute w-full h-130 flex flex-col-reverse items-center">
                         <span className="
                         rounded-full
@@ -453,7 +496,7 @@ export default function Board()
                         p-3 bg-[#191919]">Skip</span>
                         <Image
                         className={selectionElementStyle}
-                        onClick={() => SelectPlayer("skip")}
+                        onClick={() => selectionPending && !isDead && SelectPlayer("skip")}
                         width={0} height={0}
                         src="/game/player-selection-icon.svg"
                         alt="Selection icon" />
@@ -527,7 +570,7 @@ export default function Board()
                 {getTimeIcon()}
                 {time}
             </div>
-            : getGameOptionsMenu()
+            : (selfUID==hostUID) && getGameOptionsMenu()
             }
 
             {getRenderedTable()}
@@ -536,6 +579,13 @@ export default function Board()
             ? getHandAndRole()
             : getStartingInfo()
             }
+
+            {winnerScreen && 
+            <WinnerScreen
+            CloseAction={() => SetWinnerScreen(null)}
+            winners={winnerScreen.winners}
+            deadPlayers={winnerScreen.deadPlayers}
+            text={winnerScreen.winnerVal} />}
         </div>
     );
 }

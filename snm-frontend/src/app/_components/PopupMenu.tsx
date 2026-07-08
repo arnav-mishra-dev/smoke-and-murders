@@ -5,7 +5,7 @@ import Button from "./Button";
 import React from "react";
 import MenuButton from "./MenuButton";
 
-export const Overlay = styled.div`
+const Overlay = styled.div`
     position: fixed;
     display: flex;
     justify-content: center;
@@ -16,7 +16,7 @@ export const Overlay = styled.div`
     z-index: 999;
 `
 
-export const MenuPanel = styled.div`
+const MenuPanel = styled.div`
     position: absolute;
     display: flex;
     background-color: var(--primary-bg-color);
