@@ -407,7 +407,7 @@ export default function Board()
                         isDead={deadPlayers.has(uid)}
                         key={uid}
                         SelectAction={() => {
-                            if (canSelect() && !deadPlayers.has(uid))
+                            if (canSelect() && !isJailed && !deadPlayers.has(uid))
                             {
                                 return isNightfall
                                 ? ((currentRole != Role.None && currentRole != Role.Mayor) || isMafia) && SelectPlayer(uid)
@@ -481,6 +481,14 @@ export default function Board()
                             width={0} height={0}
                             src="/game/mafia-icon.svg"
                             alt="Mafia icon" />
+                        </div>}
+                        {isJailed && <div className="flex flex-row items-center justify-center gap-3 text-4xl text-gray-400">
+                            <p>Jailed</p>
+                            <Image
+                            className="w-10 h-10"
+                            width={0} height={0}
+                            src="/game/jail-icon.svg"
+                            alt="Jail icon" />
                         </div>}
                     </div>
                 </div>
