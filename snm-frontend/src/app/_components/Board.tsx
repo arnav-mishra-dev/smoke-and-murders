@@ -1,7 +1,7 @@
 'use client'
 import styled from "styled-components";
 import Image from "next/image";
-import { JSX, use, useEffect, useEffectEvent, useRef, useState } from "react";
+import { use, useEffect, useEffectEvent, useRef, useState } from "react";
 import { ConnectionContext } from "@/lib/context";
 import { Card, CardSuit, CardValue, Page, PlayerData, Role } from "@/lib/types";
 import Button from "./Button";
