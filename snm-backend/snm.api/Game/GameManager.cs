@@ -43,6 +43,7 @@ public class GameManager
     public CardDto[] GetCommunityCards() => _communityCards.ToArray();
     public Player GetPlayerData(string pid) => _players[pid];
     public int LivingPlayerCount() => _players.Values.Count(p => p.Living);
+    public int LivingCivilianCount() => _players.Values.Count(p => p is { Living: true, IsMafia: false });
     public int LivingMafiaCount() => _players.Values.Count(p => p is { IsMafia: true, Living: true });
     
     public void RemovePlayer(string pid) => _players.Remove(pid);
