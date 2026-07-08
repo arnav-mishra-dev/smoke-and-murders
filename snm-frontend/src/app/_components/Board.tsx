@@ -12,7 +12,7 @@ import MenuButton from "./MenuButton";
 export const TableContainer = styled.div`
     position: relative;
     display: flex;
-    background-image: url(/centre_table.svg);
+    background-image: url(/game/centre_table.svg);
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-evenly;
@@ -39,7 +39,7 @@ function getCardPath(card: Card)
     return `/cards/${name}.svg`;
 }
 
-function SelfHand({cards} : {cards: Card[]})
+function SelfHand({cards, isDead} : {cards: Card[], isDead: boolean})
 {
     if (cards.length === 0) return null;
 
@@ -59,17 +59,37 @@ function SelfHand({cards} : {cards: Card[]})
             src={pathSecond}
             width={0} height={0}
             alt="Second hand card" />
+
+            {isDead && <div className="
+            absolute flex
+            justify-center items-center
+            w-full h-full
+            rounded-full
+            [background:radial-gradient(#000000,#000000c1,#00000000,#00000000)]">
+                <Image
+                className="w-20 h-20"
+                width={0} height={0}
+                src="/game/death-icon.svg"
+                alt="Death icon" />
+            </div>}
         </div>
     );
 }
 
-function OtherPlayerHand({ rotation, name, isSelected, SelectAction } : {rotation: number, name: string, isSelected: boolean, SelectAction: () => void})
+function OtherPlayerHand({ rotation, name, isSelected, isDead, cardsDealt, SelectAction } : {
+    rotation: number,
+    name: string,
+    isSelected: boolean,
+    isDead: boolean,
+    cardsDealt: boolean,
+    SelectAction: () => void})
 {
     const selectionElementStyle = "absolute pointer-events-auto w-20 h-20 scale-150 "+(isSelected ? "opacity-100" : "opacity-0 hover:opacity-50");
     return(
         <div
         className="absolute flex justify-end w-11/12"
         style={{rotate: `${rotation}deg`}}>
+            {cardsDealt &&
             <div
             className="
             relative
@@ -92,7 +112,7 @@ function OtherPlayerHand({ rotation, name, isSelected, SelectAction } : {rotatio
                 src="/cards/card_back.svg"
                 width={0} height={0}
                 alt="Face down card" />
-            </div>
+            </div>}
 
             <div
             style={{
@@ -113,8 +133,23 @@ function OtherPlayerHand({ rotation, name, isSelected, SelectAction } : {rotatio
                 className={selectionElementStyle}
                 onClick={SelectAction}
                 width={0} height={0}
-                src="/player-selection-icon.svg"
+                src="/game/player-selection-icon.svg"
                 alt="Selection icon" />
+
+                {isDead &&
+                <div className="
+                absolute flex
+                justify-center items-center
+                w-25 h-25
+                rounded-full
+                [background:radial-gradient(#000000,#000000c1,#00000000,#00000000)]">
+                    <Image
+                    className="w-20 h-20"
+                    width={0} height={0}
+                    src="/game/death-icon.svg"
+                    alt="Death icon" />
+                </div>
+                }
             </div>
         </div>
     );
@@ -135,6 +170,7 @@ export default function Board()
     const [selfUID, SetUID] = useState<string>("");
     const [hostUID, SetHostUID] = useState<string>("");
     const [selectedUID, SelectPlayer] = useState<string>("");
+    const [selectionPending, SetSelectionPending] = useState<boolean>(true);
 
     const [players, SetPlayersValue] = useState<PlayerData>({});
     const [gameStarted, SetGameStarted] = useState<boolean>(false);
@@ -201,12 +237,13 @@ export default function Board()
             case "death-updates":
             {
                 const deathUpdates = parsedData.Payload;
-                SetDeadPlayers(new Set<string>(...deathUpdates, ...deadPlayers))
-                if (selfUID in deadPlayers) SetDeathState(true);
+                SetDeadPlayers(new Set<string>([...deathUpdates, ...deadPlayers]))
+                if (deathUpdates.includes(selfUID)) SetDeathState(true);
 
                 SetNightfallState(false);
                 SetJailedState(false);
                 SelectPlayer("");
+                SetSelectionPending(true);
                 break;
             }
             case "jailed":
@@ -214,6 +251,7 @@ export default function Board()
                 break;
             case "round-over":
                 SelectPlayer("");
+                SetSelectionPending(true);
                 SetNightfallState(true);
                 break;
             case "game-over":
@@ -298,6 +336,7 @@ export default function Board()
 
     function sendSelectedPlayer()
     {
+        SetSelectionPending(false);
         wsRef.current?.send(JSON.stringify(
             {
                 Type: isNightfall ? "target" : "vote",
@@ -306,6 +345,8 @@ export default function Board()
         ));
         console.log(isNightfall ? "Sent targeting message" : "Sent vote");
     }
+
+    const canSelect = () => gameStarted && selectionPending && !isDead;
 
     function getGameOptionsMenu()
     {
@@ -324,15 +365,15 @@ export default function Board()
                 closeAction={() => SetSettingsVisible(false)}
                 submitAction={() => SetSettingsVisible(false)}>
                     <div>
-                        <span>Mafia Count:</span>
-                        <InputField value={MafiaCount.toString()} onChange={(value) => SetMafiaCount(parseInt(value))} />
+                        <span className="text-2xl">Mafia Count:</span>
+                        <InputField integral={true} value={MafiaCount.toString()} onChange={(value) => SetMafiaCount(parseInt(value))} />
                     </div>
                     <div>
-                        <span>Nightfall duration:</span>
+                        <span className="text-2xl">Nightfall duration:</span>
                         <InputField integral={true} value={TurnPlayTime.toString()} onChange={(value) => SetTurnPlayTime(parseInt(value))} />
                     </div>
                     <div>
-                        <span>Vote time:</span>
+                        <span className="text-2xl">Vote time:</span>
                         <InputField integral={true} value={VoteTime.toString()} onChange={(value) => SetVoteTime(parseInt(value))} />
                     </div>
                 </PopupMenu>
@@ -351,7 +392,7 @@ export default function Board()
         const angleCovered: number = 320/playerCount;
         let currentIndex: number = -1;
 
-        const selectionElementStyle = "absolute pointer-events-auto w-20 h-20 scale-150 "
+        const selectionElementStyle = "absolute pointer-events-auto w-15 h-15 scale-150 "
         +(selectedUID=="skip" ? "opacity-100" : "opacity-0 hover:opacity-50");
 
         return(
@@ -362,9 +403,11 @@ export default function Board()
                     return(
                         <OtherPlayerHand
                         isSelected={uid==selectedUID}
+                        cardsDealt={gameStarted}
+                        isDead={deadPlayers.has(uid)}
                         key={uid}
                         SelectAction={() => {
-                            if (gameStarted)
+                            if (canSelect() && !deadPlayers.has(uid))
                             {
                                 return isNightfall
                                 ? ((currentRole != Role.None && currentRole != Role.Mayor) || isMafia) && SelectPlayer(uid)
@@ -387,17 +430,11 @@ export default function Board()
                     )}
                 </div>
 
-                {selectedUID &&
-                <div className="absolute w-full h-80 flex flex-col-reverse items-center">
-                    <Button
-                    style={{pointerEvents: "auto", padding: '0.8rem', fontSize: '2.2rem', border: '0.3rem solid rgba(0, 0, 0, 0.3)', backgroundClip: 'padding-box'}}
-                    onClick={sendSelectedPlayer}>
-                        Confirm
-                    </Button>
-                </div>
-                }
+                {!playerCount && <div className="absolute w-full h-full flex flex-row items-center justify-center">
+                    <p className="text-4xl font-bold text-white">Empty room</p>
+                </div>}
 
-                { selectedUID &&
+                { selectedUID && selectionPending &&
                 <div className="absolute w-full h-80 flex flex-col-reverse items-center">
                     <Button
                     style={{pointerEvents: "auto", padding: '0.8rem', fontSize: '2.2rem', outline: '0.3rem solid rgba(0, 0, 0, 0.3)'}}
@@ -406,7 +443,7 @@ export default function Board()
                     </Button>
                 </div>
                 }
-                {gameStarted && !isNightfall &&
+                {canSelect() && !isNightfall &&
                     <div className="absolute w-full h-130 flex flex-col-reverse items-center">
                         <span className="
                         rounded-full
@@ -418,7 +455,7 @@ export default function Board()
                         className={selectionElementStyle}
                         onClick={() => SelectPlayer("skip")}
                         width={0} height={0}
-                        src="/player-selection-icon.svg"
+                        src="/game/player-selection-icon.svg"
                         alt="Selection icon" />
                     </div>
                 }
@@ -429,11 +466,23 @@ export default function Board()
     function getHandAndRole()
     {
         return(
-            <div className="flex flex-row flex-wrap justify-center items-center gap-2">
-                <SelfHand cards={playerHand} />
-                <div className="py-5 px-3 text-6xl rounded-xl bg-black/10">
-                    <span>Role: </span>
-                    <span className="border-2 border-white rounded-2xl p-2">{Role[currentRole]}</span>
+            <div className="flex flex-col flex-wrap justify-center items-center gap-2">
+                <SelfHand isDead={isDead} cards={playerHand} />
+                <div>
+                    <div className="flex flex-col gap-4 py-5 px-3 text-6xl rounded-xl bg-black/10">
+                        <div>
+                            <span>Role: </span>
+                            <span className="border-2 border-white rounded-2xl p-2">{Role[currentRole]}</span>
+                        </div>
+                        {isMafia && <div className="flex flex-row items-center justify-center gap-3 text-4xl text-red-600">
+                            <p>Mafia</p>
+                            <Image
+                            className="w-10 h-10"
+                            width={0} height={0}
+                            src="/game/mafia-icon.svg"
+                            alt="Mafia icon" />
+                        </div>}
+                    </div>
                 </div>
             </div>
         )
@@ -442,7 +491,7 @@ export default function Board()
     function getStartingInfo()
     {
         return(
-            <div className="flex flex-col w-dvw items-center gap-15">
+            <div className="flex flex-col items-center gap-15">
                 <div className="text-5xl">Room code: <span className="leading-none p-3 rounded-xl bg-black/10">{roomCode}</span></div>
                 { selfUID === hostUID
                 ? <Button onClick={() => sendStartMessage({MafiaCount, TurnPlayTime, VoteTime})}>Start Game</Button>
@@ -452,10 +501,24 @@ export default function Board()
         );
     }
 
+    function getTimeIcon()
+    {
+        return(
+            <Image
+            className="w-15 h-15"
+            width={0} height={0}
+            src={`/game/${isNightfall ? "moon" : "sun"}.svg`}
+            alt={`${isNightfall ? "Moon icon" : "Sun icon"}`} />
+        );
+    }
+
     return(
-        <div className="flex flex-col justify-center items-center w-dvw h-dvh gap-3">
+        <div className="flex flex-row justify-evenly items-center w-dvw h-dvh gap-3">
             { gameStarted
-            ? <span className="text-6xl p-5">{time}</span>
+            ? <div className="flex flex-col gap-5 items-center w-30 text-6xl">
+                {getTimeIcon()}
+                {time}
+            </div>
             : getGameOptionsMenu()
             }
 

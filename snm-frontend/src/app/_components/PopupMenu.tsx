@@ -44,7 +44,7 @@ export default function PopupMenu({ children, visible, closeAction, submitAction
         visible ?
         <Overlay>
             <MenuPanel>
-                <form className="flex flex-col gap-10" id="menu-form" action={submitAction}>
+                <form className="flex flex-col gap-15" id="menu-form" action={submitAction}>
                     {children}
                 </form>
                 <Button form="menu-form">Apply</Button>
