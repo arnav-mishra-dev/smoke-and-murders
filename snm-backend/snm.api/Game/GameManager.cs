@@ -198,6 +198,14 @@ public class GameManager
         return deathUpdates.Keys.Where(key => deathUpdates[key]).ToList();
     }
 
+    public void UpdatePlayerRoles()
+    {
+        foreach (string pid in _players.Keys)
+        {
+            _players[pid].Role = GetRoleFromHand(_players[pid].Hand);
+        }
+    }
+
     // Returns player role based on 2 card hand passed to it and community cards member
     private Role GetRoleFromHand(CardDto[] playerCards)
     {
@@ -296,6 +304,7 @@ public class GameManager
             if (straight || threeOfKind) return OrderedRoles[2];
             if (twoPairs) return OrderedRoles[1];
             if (onePair) return OrderedRoles[0];
+            Console.WriteLine(onePair);
         }
         
         return Role.None;

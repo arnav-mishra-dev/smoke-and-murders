@@ -238,6 +238,8 @@ public class RoomManager
             };
             await BroadcastAsync(roomCode, JsonSerializer.Serialize(communityCards));
 
+            _rooms[roomCode].GameManager.UpdatePlayerRoles();
+
             List<Task> roleMessages = new();
             foreach (var connection in _rooms[roomCode].Connections)
             {
