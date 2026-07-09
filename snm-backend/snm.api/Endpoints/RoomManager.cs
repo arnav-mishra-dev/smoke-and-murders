@@ -291,10 +291,20 @@ public class RoomManager
                             Role targeterRole = playerData.Role;
                             roleActions[targeterRole].Add(targetUid);
 
-                            if (targeterRole == Role.Jailer)
+                            switch (targeterRole)
                             {
-                                var jailedMessage = new { Type = "jailed" };
-                                jailedPlayerMessages.Add(SendMessageToConnectionAsync(_rooms[roomCode].Connections[action.uid], JsonSerializer.Serialize(jailedMessage)));
+                                case Role.Jailer:
+                                    var jailedMessage = new { Type = "jailed" };
+                                    jailedPlayerMessages.Add(SendMessageToConnectionAsync(_rooms[roomCode].Connections[action.uid], JsonSerializer.Serialize(jailedMessage)));
+                                    break;
+                                case Role.Detective:
+                                    var detectiveMessage = new
+                                    {
+                                        Type = "detective",
+                                        Payload = _rooms[roomCode].GameManager.GetPlayerData(targetUid).Role,
+                                    };
+                                    await SendMessageToConnectionAsync(_rooms[roomCode].Connections[action.uid], JsonSerializer.Serialize(detectiveMessage));
+                                    break;
                             }
                         }
                     }
