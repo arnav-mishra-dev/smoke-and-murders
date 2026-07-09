@@ -261,7 +261,25 @@ public class RoomManager
             while (true)
             {
                 if (turnCountdown <= 0 || _actions.Count == _rooms[roomCode].GameManager.TurnTakerCount) break;
-
+                if (_rooms[roomCode].GameManager.LivingCivilianCount() <= _rooms[roomCode].GameManager.LivingMafiaCount()
+                    || _rooms[roomCode].GameManager.LivingMafiaCount() == 0)
+                {
+                    bool earlyCiviliansWin = _rooms[roomCode].GameManager.LivingMafiaCount() == 0;
+                    var earlyEndGameMessage = new
+                    {
+                        Type = "game-over",
+                        Payload = new
+                        {
+                            Winner = earlyCiviliansWin ? "civilians" : "mafias",
+                            WinnerList = earlyCiviliansWin ? _rooms[roomCode].GameManager.GetPlayers("Civilians") : _rooms[roomCode].GameManager.GetPlayers("Mafias")
+                        }
+                    };
+                    await BroadcastAsync(roomCode, JsonSerializer.Serialize(earlyEndGameMessage));
+                    _rooms[roomCode].GameManager.ResetGameState();
+        
+                    Console.WriteLine($"Early game over. {earlyEndGameMessage.Payload.Winner} win.");
+                    return;
+                }
                 //Timer
                 await Task.Delay(1000);
                 turnCountdown--;
@@ -340,6 +358,25 @@ public class RoomManager
             while (true)
             {
                 if (voteCountdown <= 0 || _actions.Count == _rooms[roomCode].GameManager.LivingPlayerCount()) break;
+                if (_rooms[roomCode].GameManager.LivingCivilianCount() <= _rooms[roomCode].GameManager.LivingMafiaCount()
+                    || _rooms[roomCode].GameManager.LivingMafiaCount() == 0)
+                {
+                    bool earlyCiviliansWin = _rooms[roomCode].GameManager.LivingMafiaCount() == 0;
+                    var earlyEndGameMessage = new
+                    {
+                        Type = "game-over",
+                        Payload = new
+                        {
+                            Winner = earlyCiviliansWin ? "civilians" : "mafias",
+                            WinnerList = earlyCiviliansWin ? _rooms[roomCode].GameManager.GetPlayers("Civilians") : _rooms[roomCode].GameManager.GetPlayers("Mafias")
+                        }
+                    };
+                    await BroadcastAsync(roomCode, JsonSerializer.Serialize(earlyEndGameMessage));
+                    _rooms[roomCode].GameManager.ResetGameState();
+        
+                    Console.WriteLine($"Early game over. {earlyEndGameMessage.Payload.Winner} win.");
+                    return;
+                }
 
                 //Timer
                 await Task.Delay(1000);
