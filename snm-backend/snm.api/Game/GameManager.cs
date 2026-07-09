@@ -48,7 +48,7 @@ public class GameManager
         while (mafias < _gameSettings.MafiaCount);
     }
     
-    public CardDto[] GetCommunityCards() => _communityCards.ToArray();
+    public List<CardDto> GetCommunityCards() => _communityCards.ToList();
     public Player GetPlayerData(string pid) => _players[pid];
     public int LivingPlayerCount() => _players.Values.Count(p => p.Living);
     public int LivingCivilianCount() => _players.Values.Count(p => p is { Living: true, IsMafia: false });
@@ -158,7 +158,7 @@ public class GameManager
 
     // Progress to the next level and handle current level
     // Returns updated game information
-    public string[] UpdatePlayerActions(HashSet<string> mafiaTargets, Dictionary<Role, HashSet<string>> civTargets)
+    public List<string> UpdatePlayerActions(HashSet<string> mafiaTargets, Dictionary<Role, HashSet<string>> civTargets)
     {
         Dictionary<string, bool> deathUpdates = new Dictionary<string, bool>();
 
@@ -195,44 +195,26 @@ public class GameManager
 
         IsNightfall = false;
         
-        return deathUpdates.Keys.Where(key => deathUpdates[key]).ToArray();
+        return deathUpdates.Keys.Where(key => deathUpdates[key]).ToList();
     }
 
     // Returns player role based on 2 card hand passed to it and community cards member
     private Role GetRoleFromHand(CardDto[] playerCards)
     {
-        int cardCount = 2 + _communityCards.Count;
-        List<CardValue> values = new List<CardValue>();
-        List<CardSuit> suits  = new List<CardSuit>();
-        
-        foreach (CardDto card in playerCards)
-        {
-            values.Add(card.Value);
-            suits.Add(card.Suit);
-        }
-        
-        foreach (CardDto card in _communityCards)
-        {
-            values.Add(card.Value);
-            suits.Add(card.Suit);
-        }
+        List<CardDto> cards = playerCards.Concat(_communityCards).ToList();
+        List<CardValue> values = cards.Select(c => c.Value).ToList();
+        List<CardSuit> suits  = cards.Select(c => c.Suit).ToList();
 
-        if (cardCount == 2)
+        if (cards.Count == 2)
         {
             // One Pair
             if (values[0] == values[1])
+            {
                 return OrderedRoles[0];
+            }
         }
         else
         {
-            // Royal flush - vigilante
-            if (values.Contains(CardValue.Ace)
-                && values.Contains(CardValue.King)
-                && values.Contains(CardValue.Queen)
-                && values.Contains(CardValue.Jack)
-                && values.Contains(CardValue.Ten))
-                return OrderedRoles[4];
-            
             // Frequency of every suit
             Dictionary<CardSuit, int> suitFrequency = new Dictionary<CardSuit, int>
             {
@@ -262,14 +244,13 @@ public class GameManager
                 { CardValue.Three, 0 },
                 { CardValue.Two, 0 },
             };
+            
             foreach (CardValue val in values)
                 valueFrequency[val]++;
 
-            bool IsStraight()
+            bool IsStraight(List<CardValue> valsToCheck)
             {
-                List<CardValue> sortedVals = values;
-                sortedVals.Sort();
-
+                List<CardValue> sortedVals = valsToCheck.Distinct().OrderBy(v => v).ToList();
                 foreach (CardValue val in sortedVals)
                 {
                     if ((int)val > 10) break;
@@ -279,27 +260,42 @@ public class GameManager
                         if ((int)val + i > 13) break;
                         CardValue nextVal = (CardValue)((int)val + i);
                         if (nextVal is CardValue.King && sortedVals.Contains(CardValue.Ace)) count++;
+                        
                         if (sortedVals.Contains(nextVal)) count++;
+                        else break;
                     }
 
-                    if (count > 4) return true;
+                    if (count >= 5) return true;
                 }
+                return false;
+            }
 
+            bool IsStraightFlush()
+            {
+                foreach (CardSuit suit in suits.Distinct())
+                {
+                    List<CardValue> suitValues = cards.Where(c => c.Suit == suit).Select(c => c.Value).ToList();
+                    if (IsStraight(suitValues)) return true;
+                }
                 return false;
             }
 
             // Every hand boolean
             bool fourOfKind = valueFrequency.Values.Any(i => i >= 4);
-            bool threeOfKind = valueFrequency.ContainsValue(3);
-            bool flush = suitFrequency.Values.Any(i => i >= 4);
-            bool straight = IsStraight();
-            bool twoPair = valueFrequency.Values.Count(i => i == 2) >= 2;
-            bool onePair = valueFrequency.Values.Any(i => i == 2);
+            bool straightFlush = IsStraightFlush();
+            bool threeOfKind = valueFrequency.Values.Any(i => i >= 3);
+            bool flush = suitFrequency.Values.Any(i => i >= 5);
+            bool fullHouse = valueFrequency.Values.Any(i => i >= 3)
+                             && valueFrequency.Values.Count(i => i >= 2) >= 2;
+            bool straight = IsStraight(values);
+            bool twoPairs = valueFrequency.Values.Count(i => i >= 2) >= 2;
+            bool onePair = valueFrequency.Values.Count(i => i == 2) == 1;
             
-            if ((straight && flush) || fourOfKind) return OrderedRoles[3];
-            if ((threeOfKind && onePair) || flush) return OrderedRoles[2];
-            if (straight || threeOfKind) return OrderedRoles[1];
-            if (onePair || twoPair) return OrderedRoles[0];
+            if (straightFlush || fourOfKind) return OrderedRoles[4];
+            if (fullHouse || flush) return OrderedRoles[3];
+            if (straight || threeOfKind) return OrderedRoles[2];
+            if (twoPairs) return OrderedRoles[1];
+            if (onePair) return OrderedRoles[0];
         }
         
         return Role.None;
