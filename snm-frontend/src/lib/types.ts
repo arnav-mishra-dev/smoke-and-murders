@@ -26,8 +26,8 @@ export enum CardValue
 export enum Role
 {
     None = 0,
-    Doctor = 1,
-    Detective = 2,
+    Detective = 1,
+    Doctor = 2,
     Mayor = 3,
     Jailer = 4,
     Vigilante = 5

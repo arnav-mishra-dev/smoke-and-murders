@@ -75,11 +75,12 @@ function SelfHand({cards, isDead} : {cards: Card[], isDead: boolean})
     );
 }
 
-function OtherPlayerHand({ rotation, name, isSelected, isDead, cardsDealt, SelectAction } : {
+function OtherPlayerHand({ rotation, name, isSelected, isDead, knownMafiaState, cardsDealt, SelectAction } : {
     rotation: number,
     name: string,
     isSelected: boolean,
     isDead: boolean,
+    knownMafiaState?: boolean,
     cardsDealt: boolean,
     SelectAction: () => void})
 {
@@ -122,7 +123,18 @@ function OtherPlayerHand({ rotation, name, isSelected, isDead, cardsDealt, Selec
                 flexDirection: 'column',
                 alignItems: 'center'
             }}>
-                <span className="absolute -translate-y-10 flex text-2xl/10 justify-center items-center p-2 h-10 rounded-xl bg-gray-900/95">{name}</span>
+                <div className="absolute -translate-y-10 flex flex-row gap-2 items-center">
+                    <span
+                    className="flex text-2xl/10 justify-center items-center p-2 h-10 rounded-xl bg-gray-900/95">
+                        {name}
+                    </span>
+                    {(knownMafiaState != null) &&
+                    <span
+                    style={{backgroundColor: knownMafiaState ? "#ff000050" : "#0000ff50"}}
+                    className="flex text-2xl/10 text-center justify-center items-center p-2 h-10 rounded-xl">
+                        {knownMafiaState ? "Mafia" : "Civilian"}
+                    </span>}
+                </div>
                 <Image
                 className="w-25 h-25"
                 width={0} height={0}
@@ -225,6 +237,7 @@ export default function Board()
     const [time, SetTime] = useState<string>("0:00");
     const [isDead, SetDeathState] = useState<boolean>(false);
     const [isJailed, SetJailedState] = useState<boolean>(false);
+    const [investigated, SetInvestigated] = useState<{investigatedPlayer: string, isMafia: boolean} | null>(null);
 
     const [settingsVisible, SetSettingsVisible] = useState<boolean>(false);
     const [MafiaCount, SetMafiaCount] = useState<number>(1);
@@ -276,6 +289,12 @@ export default function Board()
                 SetTime(`${minutes}:${seconds.toString().padStart(2, '0')}`);
                 break;
             }
+            case "detective":
+                SetInvestigated({
+                    investigatedPlayer: selectedUID,
+                    isMafia: parsedData.Payload
+                });
+                break;
             case "death-updates":
             {
                 const deathUpdates = parsedData.Payload;
@@ -293,6 +312,7 @@ export default function Board()
                 break;
             case "round-over":
                 SelectPlayer("");
+                SetInvestigated(null);
                 SetSelectionPending(true);
                 SetNightfallState(true);
                 break;
@@ -448,6 +468,7 @@ export default function Board()
                         isSelected={uid==selectedUID}
                         cardsDealt={gameStarted}
                         isDead={deadPlayers.has(uid)}
+                        {...(investigated ? {knownMafiaState: investigated.isMafia} : {})}
                         key={uid}
                         SelectAction={() => {
                             if (gameStarted && selectionPending && !isDead && !isJailed && !deadPlayers.has(uid))
