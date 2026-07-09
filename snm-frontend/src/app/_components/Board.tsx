@@ -20,7 +20,6 @@ export const TableContainer = styled.div`
     border-radius: 50%;
     width: 30rem;
     height: 30rem;
-    aspect-ratio: 1/1;
     transform: translateZ(-1px);
 `
 
@@ -160,11 +159,11 @@ function WinnerScreen({ winners, deadPlayers, text, CloseAction } : { winners: P
     return(
         <div className="fixed flex w-dvw h-dvh flex-col justify-center items-center gap-20 bg-[#0f0f0f]">
             <span className="text-9xl font-[misproject]">{text} win</span>
-            <div className="flex flex-row gap-10">
+            <div className="flex flex-row flex-wrap justify-center gap-10">
                 {Object.keys(winners).map((uid, key) => {
                     return(
-                        <div className="flex flex-row items-center gap-30" key={key}>
-                            <div className="flex flex-col items-center text-5xl">
+                        <div className="flex grow-0 shrink-0" key={key}>
+                            <div className="flex flex-col grow-0 shrink-0 items-center text-5xl">
                                 <span className="p-2 rounded-xl bg-gray-900/95">{winners[uid]}</span>
                                 <Image
                                 className="w-50 h-50"
@@ -237,7 +236,8 @@ export default function Board()
         if (!SetRoomCode) return;
 
         const parsedData = JSON.parse(event.data);
-        console.log(parsedData);
+        if (parsedData.Type != "time")
+            console.log(parsedData);
         switch(parsedData.Type)
         {
             case "room-code":
