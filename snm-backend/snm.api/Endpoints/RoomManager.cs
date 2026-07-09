@@ -319,7 +319,7 @@ public class RoomManager
                                     var detectiveMessage = new
                                     {
                                         Type = "detective",
-                                        Payload = _rooms[roomCode].GameManager.GetPlayerData(targetUid).Role,
+                                        Payload = _rooms[roomCode].GameManager.GetPlayerData(targetUid).IsMafia,
                                     };
                                     await SendMessageToConnectionAsync(_rooms[roomCode].Connections[action.uid], JsonSerializer.Serialize(detectiveMessage));
                                     break;

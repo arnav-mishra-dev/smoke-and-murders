@@ -84,7 +84,7 @@ executed.
 2. Every player receives a "role-message" with the payload having an integral Role value.
 3. Nightfall starts, and every second, every player receives a message of type "time" and with an integer of the remaining time left.
 4. During nightfall, each turn-taking player must send a message of type "target" and with the payload being the target's uid.
-5. Message of type "detective" is broadcasted to appropriate players. The payload is the Role.
+5. Message of type "detective" is broadcasted to appropriate players. The payload is a boolean which is true if the target is a mafia.
 5. Message type "death-updates" is broadcasted.
 6. Message type "jailed" is broadcasted to appropriate players.
 7. Daytime immediately begins, and the same time message type sends time remaining every second.
