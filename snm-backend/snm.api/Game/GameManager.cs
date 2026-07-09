@@ -4,6 +4,15 @@ namespace snm.api.Game;
 
 public class GameManager
 {
+    private static readonly Role[] OrderedRoles =
+    [
+        Role.Detective,
+        Role.Doctor,
+        Role.Mayor,
+        Role.Jailer,
+        Role.Vigilante
+    ];
+    
     private readonly Deck _deck = new();
     private readonly List<CardDto> _communityCards = new();
     private readonly Dictionary<string, Player> _players = new();
@@ -212,7 +221,7 @@ public class GameManager
         {
             // One Pair
             if (values[0] == values[1])
-                return Role.Doctor;
+                return OrderedRoles[0];
         }
         else
         {
@@ -222,7 +231,7 @@ public class GameManager
                 && values.Contains(CardValue.Queen)
                 && values.Contains(CardValue.Jack)
                 && values.Contains(CardValue.Ten))
-                return Role.Vigilante;
+                return OrderedRoles[4];
             
             // Frequency of every suit
             Dictionary<CardSuit, int> suitFrequency = new Dictionary<CardSuit, int>
@@ -232,6 +241,7 @@ public class GameManager
                 { CardSuit.Diamonds, 0 },
                 { CardSuit.Clubs, 0 }
             };
+            
             foreach (CardSuit suit in suits)
                 suitFrequency[suit]++;
             
@@ -279,17 +289,17 @@ public class GameManager
             }
 
             // Every hand boolean
-            bool straight = IsStraight();
-            bool flush = suitFrequency.Values.Count(i => i >= 4) > 0;
-            bool fourOfKind = valueFrequency.Values.Count(i => i >= 4) > 0;
+            bool fourOfKind = valueFrequency.Values.Any(i => i >= 4);
             bool threeOfKind = valueFrequency.ContainsValue(3);
+            bool flush = suitFrequency.Values.Any(i => i >= 4);
+            bool straight = IsStraight();
             bool twoPair = valueFrequency.Values.Count(i => i == 2) >= 2;
-            bool onePair = valueFrequency.Values.Count(i => i == 2) >= 1;
+            bool onePair = valueFrequency.Values.Any(i => i == 2);
             
-            if ((straight && flush) || fourOfKind) return Role.Jailer;
-            if ((threeOfKind && onePair) || flush) return Role.Mayor;
-            if (straight || threeOfKind) return Role.Detective;
-            if (onePair || twoPair) return Role.Doctor;
+            if ((straight && flush) || fourOfKind) return OrderedRoles[3];
+            if ((threeOfKind && onePair) || flush) return OrderedRoles[2];
+            if (straight || threeOfKind) return OrderedRoles[1];
+            if (onePair || twoPair) return OrderedRoles[0];
         }
         
         return Role.None;
