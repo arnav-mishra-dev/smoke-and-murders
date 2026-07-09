@@ -107,13 +107,13 @@ public class RoomManager
                             // Apparently you can give each case its own scope with curly braces
                             case "target":
                             {
-                                Console.WriteLine($"Received target: {transferData.Payload.GetString()}");
                                 var playerData = _rooms[roomCode].GameManager.GetPlayerData(uid);
+                                if (!playerData.Living) break;
                                 if ((playerData.Role is Role.Doctor or Role.Detective or Role.Jailer or Role.Vigilante || playerData.IsMafia)
                                     && _rooms[roomCode].GameManager.IsNightfall
                                     && !playerData.Jailed)
                                 {
-                                    Console.WriteLine(transferData.Payload);
+                                    Console.WriteLine($"Received target: {transferData.Payload.GetString()}");
                                     if (_actions.All(p => p.uid != uid))
                                     {
                                         _actions.Enqueue((uid, transferData));
@@ -126,7 +126,7 @@ public class RoomManager
                             {
                                 Console.WriteLine($"Received vote: {transferData.Payload.GetString()}");
                                 var playerData = _rooms[roomCode].GameManager.GetPlayerData(uid);
-                                if (_rooms[roomCode].GameManager.IsNightfall) break;
+                                if (_rooms[roomCode].GameManager.IsNightfall || !playerData.Living) break;
                                 
                                 if (_actions.All(p => p.uid != uid))
                                 {
@@ -260,7 +260,7 @@ public class RoomManager
             int turnCountdown = gameSettings.TurnPlayTime;
             while (true)
             {
-                if (turnCountdown <= 0 || _actions.Count == _rooms[roomCode].GameManager.TurnTakerCount) break;
+                if (turnCountdown <= 0 || _actions.Count == _rooms[roomCode].GameManager.TurnTakerCount()) break;
                 if (_rooms[roomCode].GameManager.LivingCivilianCount() <= _rooms[roomCode].GameManager.LivingMafiaCount()
                     || _rooms[roomCode].GameManager.LivingMafiaCount() == 0)
                 {

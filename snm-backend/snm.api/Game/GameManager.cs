@@ -12,7 +12,6 @@ public class GameManager
     
     public bool GameStarted { get; private set; }
     public bool IsNightfall { get; private set; }
-    public int TurnTakerCount { get; private set; }
 
     // Called after adding all players
     public void InitializeGame(GameSettingsDto gameSettings)
@@ -119,30 +118,33 @@ public class GameManager
             
             case Stage.Showdown: break;
         }
+        
+        if (_currentStage != Stage.Showdown)
+            _currentStage = (Stage)((int)_currentStage + 1);
 
+        IsNightfall = true;
+    }
+
+    public int TurnTakerCount()
+    {
         // Count players who can take turns
         int turnTakers = 0;
         foreach (string pid in _players.Keys)
         {
             _players[pid].Role = GetRoleFromHand(_players[pid].Hand);
             if (_players[pid].IsMafia
-            || _players[pid].Role is
+                || _players[pid].Role is
                     Role.Doctor or
                     Role.Detective or
                     Role.Jailer or
                     Role.Vigilante
-            && !_players[pid].Jailed)
+                && !_players[pid].Jailed)
             {
                 turnTakers++;
             }
         }
 
-        TurnTakerCount = turnTakers;
-        
-        if (_currentStage != Stage.Showdown)
-            _currentStage = (Stage)((int)_currentStage + 1);
-
-        IsNightfall = true;
+        return turnTakers;
     }
 
     // Progress to the next level and handle current level
