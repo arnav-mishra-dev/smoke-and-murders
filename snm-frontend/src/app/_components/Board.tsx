@@ -371,8 +371,8 @@ export default function Board()
         console.log("Connecting...");
 
         const ws = roomCodeRef.current
-        ? new WebSocket(`ws://${process.env.API_HOST}:${process.env.API_HOST}/api/ws?username=${username}&room=${roomCodeRef.current}`)
-        : new WebSocket(`ws://localhost:5000/api/ws?username=${username}`);
+        ? new WebSocket(`ws://${process.env.NEXT_PUBLIC_API_HOST}:${process.env.NEXT_PUBLIC_API_PORT}/api/ws?username=${username}&room=${roomCodeRef.current}`)
+        : new WebSocket(`ws://${process.env.NEXT_PUBLIC_API_HOST}:${process.env.NEXT_PUBLIC_API_PORT}/api/ws?username=${username}`);
 
         wsRef.current = ws;
         console.log(`Connected to room ${wsRef.current.url}`);
