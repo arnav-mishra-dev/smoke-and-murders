@@ -371,7 +371,7 @@ export default function Board()
         console.log("Connecting...");
 
         const ws = roomCodeRef.current
-        ? new WebSocket(`ws://localhost:5000/api/ws?username=${username}&room=${roomCodeRef.current}`)
+        ? new WebSocket(`ws://${process.env.API_HOST}:${process.env.API_HOST}/api/ws?username=${username}&room=${roomCodeRef.current}`)
         : new WebSocket(`ws://localhost:5000/api/ws?username=${username}`);
 
         wsRef.current = ws;
