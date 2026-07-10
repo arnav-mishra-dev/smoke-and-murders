@@ -6,9 +6,9 @@ public class GameManager
 {
     private static readonly Role[] OrderedRoles =
     [
+        Role.Mayor,
         Role.Detective,
         Role.Doctor,
-        Role.Mayor,
         Role.Jailer,
         Role.Vigilante
     ];

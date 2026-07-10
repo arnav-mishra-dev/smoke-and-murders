@@ -37,9 +37,9 @@ public enum Stage
 public enum Role
 {
     None = 0,
-    Detective = 1,
-    Doctor = 2,
-    Mayor = 3,
+    Mayor = 1,
+    Detective = 2,
+    Doctor = 3,
     Jailer = 4,
     Vigilante = 5
 }
