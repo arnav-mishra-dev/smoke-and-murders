@@ -4,14 +4,19 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<RoomManager>();
 var app = builder.Build();
 
-string allowedOrigins = builder.Configuration["AllowedOrigins"] ?? "http://localhost:3000";
 WebSocketOptions webSocketOptions = new()
 {
     KeepAliveInterval = TimeSpan.FromSeconds(120)
 };
-webSocketOptions.AllowedOrigins.Add(allowedOrigins.Trim());
-app.UseWebSockets(webSocketOptions);
+string? allowedOriginsEnv = builder.Configuration["AllowedOrigins"];
+if (string.IsNullOrWhiteSpace(allowedOriginsEnv)) throw new InvalidOperationException("Do not attempt to start the server without an AllowedOrigins environment variable.");
 
+string[] allowedOrigins = allowedOriginsEnv.Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+foreach(string origin in allowedOrigins)
+{
+    webSocketOptions.AllowedOrigins.Add(origin);
+}
+app.UseWebSockets(webSocketOptions);
 app.SetupGameWebSockets();
 
 await app.RunAsync();
