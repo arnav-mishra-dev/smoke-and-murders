@@ -175,28 +175,29 @@ function WinnerScreen({ winners, deadPlayers, text, CloseAction } : { winners: P
                 {Object.keys(winners).map((uid, key) => {
                     return(
                         <div className="flex grow-0 shrink-0" key={key}>
-                            <div className="flex flex-col grow-0 shrink-0 items-center text-5xl">
+                            <div className="relative flex flex-col grow-0 shrink-0 items-center text-5xl">
                                 <span className="p-2 rounded-xl bg-gray-900/95">{winners[uid]}</span>
                                 <Image
                                 className="w-50 h-50"
                                 width={0} height={0}
                                 src="/ui/profile-icon.svg"
                                 alt="Profile icon" />
-                            </div>
                             { deadPlayers.includes(uid) &&
                                 <div className="
                                 absolute flex
+                                bottom-0
                                 justify-center items-center
                                 w-50 h-50
                                 rounded-full
                                 [background:radial-gradient(#000000,#000000c1,#00000000,#00000000)]">
                                     <Image
-                                    className="w-20 h-20"
+                                    className="w-full h-full"
                                     width={0} height={0}
                                     src="/game/death-icon.svg"
                                     alt="Death icon" />
                                 </div>
                             }
+                            </div>
                         </div>
                     );
                 })}
