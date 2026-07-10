@@ -23,22 +23,26 @@ export enum CardValue
     King = 13,
 }
 
+export enum Role
+{
+    None = 0,
+    Mayor = 1,
+    Detective = 2,
+    Doctor = 3,
+    Jailer = 4,
+    Vigilante = 5
+}
+
 export interface Card
 {
-    suit: CardSuit,
-    value: CardValue
+    Suit: CardSuit,
+    Value: CardValue
 }
 
 export enum Page
 {
     Home = 1,
     Game = 2
-}
-
-export interface GameMessage
-{
-    Type: string,
-    Payload: any
 }
 
 export interface PlayerData

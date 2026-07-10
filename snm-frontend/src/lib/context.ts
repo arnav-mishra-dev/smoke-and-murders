@@ -1,13 +1,13 @@
-import { createContext, RefObject } from "react";
-import { Page, PlayerData } from "./types";
+import { createContext } from "react";
+import { Page } from "./types";
 
-interface ConnectionContextType
+export interface ConnectionContextType
 {
     username: string,
-    connection: RefObject<WebSocket | null>,
-    players: PlayerData[],
+    roomCode: string,
+    SetRoomCode: (val: string) => void,
     SwitchPage: (page: Page) => void,
-    SetUsername: (username: string) => void
+    SetUsername: (username: string) => void,
 }
 
 export const ConnectionContext = createContext<ConnectionContextType | null>(null);

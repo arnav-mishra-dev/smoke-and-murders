@@ -27,7 +27,7 @@ const Button = styled.button`
         height: 110%;
         width: 103%;
         border-radius: 0.5em;
-        background-image: url(/noise.svg);
+        background-image: url(/ui/noise.svg);
         z-index: -1;
 
         transition: width var(--transition-time), height var(--transition-time);

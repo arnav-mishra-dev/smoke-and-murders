@@ -30,13 +30,13 @@ export const StyledInput = styled.input`
     }
 `
 
-export default function InputField({ onChange } : { onChange? : (value: string) => void } )
+export default function InputField({ onChange, integral, maxVal, value } : { onChange? : (value: string) => void, integral?: boolean, maxVal?: number, value?: string } )
 {
     return(
         <div className='flex flex-col relative justify-center items-end'>
             <Image
             className="w-10 h-10 p-1 absolute"
-            src="/edit-icon.svg"
+            src="/ui/edit-icon.svg"
             width={0}
             height={0}
             alt="Edit icon"
@@ -44,8 +44,10 @@ export default function InputField({ onChange } : { onChange? : (value: string) 
             <StyledInput
             id='input-field'
             type="text"
-            maxLength={20}
+            maxLength={15}
+            value={value}
             onChange={(e) => onChange?.(e.target.value)}
+            {...(integral ? {type:"number", step:1, min:0, max:maxVal} : {})}
             />
         </div>
     )
