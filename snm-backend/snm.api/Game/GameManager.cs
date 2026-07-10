@@ -4,6 +4,15 @@ namespace snm.api.Game;
 
 public class GameManager
 {
+    private static readonly Role[] OrderedRoles =
+    [
+        Role.Mayor,
+        Role.Detective,
+        Role.Doctor,
+        Role.Jailer,
+        Role.Vigilante
+    ];
+    
     private readonly Deck _deck = new();
     private readonly List<CardDto> _communityCards = new();
     private readonly Dictionary<string, Player> _players = new();
@@ -12,7 +21,6 @@ public class GameManager
     
     public bool GameStarted { get; private set; }
     public bool IsNightfall { get; private set; }
-    public int TurnTakerCount { get; private set; }
 
     // Called after adding all players
     public void InitializeGame(GameSettingsDto gameSettings)
@@ -40,9 +48,10 @@ public class GameManager
         while (mafias < _gameSettings.MafiaCount);
     }
     
-    public CardDto[] GetCommunityCards() => _communityCards.ToArray();
+    public List<CardDto> GetCommunityCards() => _communityCards.ToList();
     public Player GetPlayerData(string pid) => _players[pid];
     public int LivingPlayerCount() => _players.Values.Count(p => p.Living);
+    public int LivingCivilianCount() => _players.Values.Count(p => p is { Living: true, IsMafia: false });
     public int LivingMafiaCount() => _players.Values.Count(p => p is { IsMafia: true, Living: true });
     
     public void RemovePlayer(string pid) => _players.Remove(pid);
@@ -118,25 +127,6 @@ public class GameManager
             
             case Stage.Showdown: break;
         }
-
-        // Count players who can take turns
-        int turnTakers = 0;
-        foreach (string pid in _players.Keys)
-        {
-            _players[pid].Role = GetRoleFromHand(_players[pid].Hand);
-            if (_players[pid].IsMafia ||
-                _players[pid].Role is
-                    Role.Doctor or
-                    Role.Detective or
-                    Role.Jailer or
-                    Role.Vigilante)
-            {
-                Console.WriteLine(_players[pid].Name);
-                turnTakers++;
-            }
-        }
-
-        TurnTakerCount = turnTakers;
         
         if (_currentStage != Stage.Showdown)
             _currentStage = (Stage)((int)_currentStage + 1);
@@ -144,76 +134,95 @@ public class GameManager
         IsNightfall = true;
     }
 
+    public int TurnTakerCount()
+    {
+        // Count players who can take turns
+        int turnTakers = 0;
+        foreach (string pid in _players.Keys)
+        {
+            _players[pid].Role = GetRoleFromHand(_players[pid].Hand);
+            if (_players[pid].IsMafia
+                || _players[pid].Role is
+                    Role.Doctor or
+                    Role.Detective or
+                    Role.Jailer or
+                    Role.Vigilante
+                && !_players[pid].Jailed)
+            {
+                turnTakers++;
+            }
+        }
+
+        return turnTakers;
+    }
+
     // Progress to the next level and handle current level
     // Returns updated game information
-    public Dictionary<string, bool> UpdatePlayerActions(List<string> mafiaTargets, Dictionary<Role, List<string>> civTargets)
+    public List<string> UpdatePlayerActions(HashSet<string> mafiaTargets, Dictionary<Role, HashSet<string>> civTargets)
     {
         Dictionary<string, bool> deathUpdates = new Dictionary<string, bool>();
 
         foreach (string playerUid in _players.Keys) // Free jailed players so they can perform actions on the next turn
+        {
             _players[playerUid].Jailed = false;
+        }
         
         foreach (string pid in civTargets[Role.Vigilante])
         {
             _players[pid].Living = false;
-            deathUpdates.Add(pid, false);
+            deathUpdates.TryAdd(pid, true);
         }
 
         foreach (string target in mafiaTargets)
         {
             _players[target].Living = false;
-            deathUpdates.Add(target, false);
+            deathUpdates.TryAdd(target, true);
         }
-        
-        foreach (string pid in civTargets[Role.Jailer])
-            _players[pid].Jailed = true;
         
         foreach (string pid in civTargets[Role.Doctor])
         {
             _players[pid].Living = true;
-            deathUpdates.Add(pid, true);
+            if (!deathUpdates.TryAdd(pid, false))
+            {
+                deathUpdates[pid] = false;
+            }
+        }
+        
+        foreach (string pid in civTargets[Role.Jailer])
+        {
+            _players[pid].Jailed = true;
         }
 
         IsNightfall = false;
         
-        return deathUpdates;
+        return deathUpdates.Keys.Where(key => deathUpdates[key]).ToList();
+    }
+
+    public void UpdatePlayerRoles()
+    {
+        foreach (string pid in _players.Keys)
+        {
+            _players[pid].Role = GetRoleFromHand(_players[pid].Hand);
+        }
     }
 
     // Returns player role based on 2 card hand passed to it and community cards member
     private Role GetRoleFromHand(CardDto[] playerCards)
     {
-        int cardCount = 2 + _communityCards.Count;
-        List<CardValue> values = new List<CardValue>();
-        List<CardSuit> suits  = new List<CardSuit>();
-        
-        foreach (CardDto card in playerCards)
-        {
-            values.Add(card.Value);
-            suits.Add(card.Suit);
-        }
-        
-        foreach (CardDto card in _communityCards)
-        {
-            values.Add(card.Value);
-            suits.Add(card.Suit);
-        }
+        List<CardDto> cards = playerCards.Concat(_communityCards).ToList();
+        List<CardValue> values = cards.Select(c => c.Value).ToList();
+        List<CardSuit> suits  = cards.Select(c => c.Suit).ToList();
 
-        if (cardCount == 2)
+        if (cards.Count == 2)
         {
             // One Pair
             if (values[0] == values[1])
-                return Role.Doctor;
+            {
+                return OrderedRoles[0];
+            }
         }
         else
         {
-            // Royal flush - vigilante
-            if (values.Contains(CardValue.Ace)
-                && values.Contains(CardValue.King)
-                && values.Contains(CardValue.Queen)
-                && values.Contains(CardValue.Jack)
-                && values.Contains(CardValue.Ten))
-                return Role.Vigilante;
-            
             // Frequency of every suit
             Dictionary<CardSuit, int> suitFrequency = new Dictionary<CardSuit, int>
             {
@@ -222,6 +231,7 @@ public class GameManager
                 { CardSuit.Diamonds, 0 },
                 { CardSuit.Clubs, 0 }
             };
+            
             foreach (CardSuit suit in suits)
                 suitFrequency[suit]++;
             
@@ -242,14 +252,13 @@ public class GameManager
                 { CardValue.Three, 0 },
                 { CardValue.Two, 0 },
             };
+            
             foreach (CardValue val in values)
                 valueFrequency[val]++;
 
-            bool IsStraight()
+            bool IsStraight(List<CardValue> valsToCheck)
             {
-                List<CardValue> sortedVals = values;
-                sortedVals.Sort();
-
+                List<CardValue> sortedVals = valsToCheck.Distinct().OrderBy(v => v).ToList();
                 foreach (CardValue val in sortedVals)
                 {
                     if ((int)val > 10) break;
@@ -259,27 +268,43 @@ public class GameManager
                         if ((int)val + i > 13) break;
                         CardValue nextVal = (CardValue)((int)val + i);
                         if (nextVal is CardValue.King && sortedVals.Contains(CardValue.Ace)) count++;
+                        
                         if (sortedVals.Contains(nextVal)) count++;
+                        else break;
                     }
 
-                    if (count > 4) return true;
+                    if (count >= 5) return true;
                 }
+                return false;
+            }
 
+            bool IsStraightFlush()
+            {
+                foreach (CardSuit suit in suits.Distinct())
+                {
+                    List<CardValue> suitValues = cards.Where(c => c.Suit == suit).Select(c => c.Value).ToList();
+                    if (IsStraight(suitValues)) return true;
+                }
                 return false;
             }
 
             // Every hand boolean
-            bool straight = IsStraight();
-            bool flush = suitFrequency.Values.Count(i => i >= 4) > 0;
-            bool fourOfKind = valueFrequency.Values.Count(i => i >= 4) > 0;
-            bool threeOfKind = valueFrequency.ContainsValue(3);
-            bool twoPair = valueFrequency.Values.Count(i => i == 2) >= 2;
-            bool onePair = valueFrequency.Values.Count(i => i == 2) >= 1;
+            bool fourOfKind = valueFrequency.Values.Any(i => i >= 4);
+            bool straightFlush = IsStraightFlush();
+            bool threeOfKind = valueFrequency.Values.Any(i => i >= 3);
+            bool flush = suitFrequency.Values.Any(i => i >= 5);
+            bool fullHouse = valueFrequency.Values.Any(i => i >= 3)
+                             && valueFrequency.Values.Count(i => i >= 2) >= 2;
+            bool straight = IsStraight(values);
+            bool twoPairs = valueFrequency.Values.Count(i => i >= 2) >= 2;
+            bool onePair = valueFrequency.Values.Count(i => i == 2) == 1;
             
-            if ((straight && flush) || fourOfKind) return Role.Jailer;
-            if ((threeOfKind && onePair) || flush) return Role.Mayor;
-            if (straight || threeOfKind) return Role.Detective;
-            if (onePair || twoPair) return Role.Doctor;
+            if (straightFlush || fourOfKind) return OrderedRoles[4];
+            if (fullHouse || flush) return OrderedRoles[3];
+            if (straight || threeOfKind) return OrderedRoles[2];
+            if (twoPairs) return OrderedRoles[1];
+            if (onePair) return OrderedRoles[0];
+            Console.WriteLine(onePair);
         }
         
         return Role.None;
