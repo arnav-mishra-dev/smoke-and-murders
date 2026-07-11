@@ -2,6 +2,7 @@
 Smoke and murders is a simple card game I made based on poker and mafia.
 
 ## Requirements
+- git
 - Docker
 
 ## Usage
