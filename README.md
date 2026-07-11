@@ -33,7 +33,7 @@ Every player's role is based on their highest current hand. The roles assigned b
 - Three of a kind - Three cards with the same rank
 #### Jailer - Stops a target from performing their action the next nightfall
 - Flush - 5 cards of the same suit
-#### Vigilante - A non-mafia that can choose to kill any player
+#### Vigilante - A civilian that can choose to kill any player
 - Full house - A Three of a kind and a pair
 - Four of a kind - 5 cards with the same rank
 - Straight Flush - 5 cards of the same suit and consecutive rank (an ace can be higher than a king or lower than a 2)
