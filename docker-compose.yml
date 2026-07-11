@@ -1,21 +1,21 @@
 services:
   backend:
-    image: smoke-and-murders/backend
     build: ./snm-backend
+    image: smoke-and-murders/backend
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - AllowedOrigins=${ALLOWED_ORIGINS}
     ports:
-      - 8080:8080
+      - ${BACKEND_PORT}:8080
 
   frontend:
-    image: smoke-and-murders/frontend
     build:
       context: ./snm-frontend
       args:
         - NEXT_PUBLIC_API_HOST=${NEXT_PUBLIC_API_HOST}
         - NEXT_PUBLIC_API_PORT=${NEXT_PUBLIC_API_PORT}
+    image: smoke-and-murders/frontend
     depends_on:
       - backend
     ports:
-      - 80:3000
+      - ${FRONTEND_PORT}:3000
