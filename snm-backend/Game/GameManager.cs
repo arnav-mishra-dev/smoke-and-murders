@@ -299,12 +299,11 @@ public class GameManager
             bool twoPairs = valueFrequency.Values.Count(i => i >= 2) >= 2;
             bool onePair = valueFrequency.Values.Count(i => i == 2) == 1;
             
-            if (straightFlush || fourOfKind) return OrderedRoles[4];
-            if (fullHouse || flush) return OrderedRoles[3];
-            if (straight || threeOfKind) return OrderedRoles[2];
+            if (straightFlush || fourOfKind || fullHouse) return OrderedRoles[4];
+            if (straight || flush) return OrderedRoles[3];
+            if (threeOfKind) return OrderedRoles[2];
             if (twoPairs) return OrderedRoles[1];
             if (onePair) return OrderedRoles[0];
-            Console.WriteLine(onePair);
         }
         
         return Role.None;
