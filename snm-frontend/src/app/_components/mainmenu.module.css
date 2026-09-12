@@ -3,6 +3,31 @@
     src: url(/fonts/misproject.woff2);
 }
 
+@keyframes breatheAnimation {
+	0% { opacity: 0; }
+	50% { opacity: 1; }
+	100% { opacity: 0; }
+}
+
+@keyframes scrollAnimation {
+	0% { background-position: 0% 0%; }
+	100% { background-position: -512px -1024px; }
+}
+
+.smoke{
+	position: fixed;
+	background-repeat: repeat;
+	background-size: 512px 512px;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+
+	animation-name: breatheAnimation, scrollAnimation;
+	animation-duration: 6s, 10s;
+	animation-iteration-count: infinite, infinite;
+	animation-timing-function: linear, linear;
+}
+
 .container{
     position: fixed;
     display: flex;
