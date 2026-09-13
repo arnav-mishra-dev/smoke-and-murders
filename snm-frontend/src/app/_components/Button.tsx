@@ -15,11 +15,16 @@ const Button = styled.button`
     justify-content: center;
     align-items: center;
 
-    transition: background-color var(--transition-time);
+    transition: background-color color var(--transition-time);
 
     &:active{
         background-color: rgb(20, 20, 20);
     }
+
+	&:hover{
+		color: red;
+		transition: color var(--transition-time);
+	}
 
     &::after{
         content: '';

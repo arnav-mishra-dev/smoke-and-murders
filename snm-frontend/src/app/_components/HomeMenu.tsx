@@ -2,11 +2,23 @@
 import { use, useState } from "react";
 import { ConnectionContext } from "@/lib/context";
 import { Page } from "@/lib/types";
+import styled, { keyframes } from "styled-components";
 import Image from "next/image";
 import Button from "./Button";
 import PopupMenu from "./PopupMenu";
 import InputField from "./InputField";
 import styles from './mainmenu.module.css';
+
+function Background()
+{
+	return (
+		<div className="absolute bg-black w-full h-full -z-10">
+			<div className={styles.smoke} style={{backgroundImage: 'url(/smoke/smoke-1.png)'}} />
+			<div className={styles.smoke} style={{backgroundImage: 'url(/smoke/smoke-2.png)', animationDelay: '2s, 0s'}} />
+			<div className={styles.smoke} style={{backgroundImage: 'url(/smoke/smoke-3.png)', animationDelay: '4s, 0s'}} />
+		</div>
+	);
+}
 
 function UsernameSetter()
 {
@@ -33,6 +45,7 @@ export default function HomeMenu()
 
     return(
         <div className={styles.container}>
+			<Background />
             <PopupMenu
             visible={roomJoinActive}
             closeAction={() => SetRoomJoinShown(false)}
@@ -46,7 +59,7 @@ export default function HomeMenu()
                 <p className="text-2xl/10">Room code:</p>
                 <InputField onChange={SetEnteredCode}/>
             </PopupMenu>
-            
+
             <div className={styles['title-font']}>Smoke<br/>and<br/>Murders</div>
 
             <Button onClick={() => {

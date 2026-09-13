@@ -1,2 +1,3 @@
-﻿*woff2 binary
-*.svg -text -diff
+﻿*.woff2 binary
+*.png binary
+*.jpg binary
