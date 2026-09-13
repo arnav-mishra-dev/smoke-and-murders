@@ -13,6 +13,7 @@ export const TableContainer = styled.div`
     position: relative;
     display: flex;
     background-image: url(/game/centre_table.svg);
+	background-repeat: no-repeat;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-evenly;
@@ -20,6 +21,7 @@ export const TableContainer = styled.div`
     border-radius: 50%;
     width: 30rem;
     height: 30rem;
+	flex-shrink: 0;
     transform: translateZ(-1px);
 `
 
@@ -586,7 +588,8 @@ export default function Board()
     }
 
     return(
-        <div className="flex flex-row justify-evenly items-center w-dvw h-dvh gap-3">
+        <div className="flex flex-row justify-evenly items-center w-dvw h-dvh gap-3 ">
+			<div className="-z-10 fixed w-full h-full bg-[url(/game/noir-street.jpg)] bg-cover bg-no-repeat" />
             { gameStarted
             ? <div className="flex flex-col gap-5 items-center w-30 text-6xl">
                 {getTimeIcon()}
@@ -596,7 +599,7 @@ export default function Board()
             }
 
             {getRenderedTable()}
-            
+
             { gameStarted
             ? getHandAndRole()
             : getStartingInfo()
