@@ -127,7 +127,7 @@ function OtherPlayerHand({ rotation, name, isSelected, isDead, knownMafiaState, 
             }}>
                 <div className="absolute -translate-y-10 flex flex-row gap-2 items-center">
                     <span
-                    className="flex text-2xl/10 justify-center items-center p-2 h-10 rounded-xl bg-gray-900/95">
+                    className="flex text-nowrap text-2xl/10 justify-center items-center p-2 h-10 rounded-xl bg-gray-900/95">
                         {name}
                     </span>
                     {(knownMafiaState != null) &&
@@ -567,7 +567,7 @@ export default function Board()
     {
         return(
             <div className="flex flex-col items-center gap-15">
-                <div className="text-5xl">Room code: <span className="leading-none p-3 rounded-xl bg-black/10">{roomCode}</span></div>
+                <div className="text-5xl">Room code: <span className="leading-none p-3 rounded-xl bg-black/50">{roomCode}</span></div>
                 { selfUID === hostUID
                 ? <Button onClick={() => sendStartMessage({MafiaCount, TurnPlayTime, VoteTime})}>Start Game</Button>
                 : <span className="text-xl">Waiting for host to start the game...</span>
